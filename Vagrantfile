@@ -12,7 +12,7 @@ Vagrant.configure("2") do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://atlas.hashicorp.com/search.
-  config.vm.box = "hashicorp/precise64"
+  config.vm.box = "ubuntu/xenial64"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -65,25 +65,14 @@ Vagrant.configure("2") do |config|
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
   # documentation for more information about their specific syntax and use.
   config.vm.provision "shell", inline: <<-SHELL
-	locale-gen en_US.UTF-8
-	export LAN="en_US.UTF-8"
-	export LANGUAGE="en_US:en"
-	export LC_ALL="en_US.UTF-8"
+	sudo apt-get install apt-transport-https ca-certificates curl software-properties-common
+		
+	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 	
-	# Install PostgreSQL
-	sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ `lsb_release -cs`-pgdg main" >> /etc/apt/sources.list.d/pgdg.list'
-	wget -q https://www.postgresql.org/media/keys/ACCC4CF8.asc -O - | sudo apt-key add -
+	sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 	
-	wget https://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb && sudo dpkg -i erlang-solutions_1.0_all.deb
+	sudo apt-get update
 	
-    sudo apt-get update
-	sudo apt-get -y install postgresql postgresql-contrib
-	sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
-	sudo apt-get -y install inotify-tools
-	sudo apt-get -y install esl-erlang
-	sudo apt-get -y install elixir
-	curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash - && sudo apt-get install -y nodejs
-	mix local.hex --force
-	mix archive.install --force https://github.com/phoenixframework/archives/raw/master/phoenix_new.ez
+	sudo apt-get install docker-ce  
   SHELL
 end
