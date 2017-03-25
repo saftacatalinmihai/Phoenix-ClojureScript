@@ -14,5 +14,5 @@ RUN mix archive.install https://github.com/phoenixframework/archives/raw/master/
 RUN curl -sL https://deb.nodesource.com/setup_6.x | bash -
 RUN apt-get install -y -q nodejs
 
-# Set /app as workdir
+# Set /code as workdir
 WORKDIR /code

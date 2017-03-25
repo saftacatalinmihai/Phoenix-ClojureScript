@@ -82,6 +82,6 @@ Vagrant.configure("2") do |config|
     usermod -a -G docker ubuntu
   
     cd /vagrant 
-    docker-compose up -d
+    docker-compose build
   SHELL
 end

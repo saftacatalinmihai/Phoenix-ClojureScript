@@ -6,10 +6,11 @@ services:
     build: .
     command: mix phoenix.server
     volumes:
-      - .:/code
+      - ./code:/code
+    working_dir: /code/actor_viz
     ports:
       - "4000:4000"
     depends_on:
       - db
     links:
-      - db:localhost
+      - db
