@@ -1,6 +1,10 @@
 FROM elixir:latest
 
 MAINTAINER Safta Catalin Mihai <saftacatalinmihai@gmail.com>
+
+RUN apt-get update\
+    && apt-get install -y inotify-tools
+
 # Install hex
 RUN mix local.hex --force
 
