@@ -22,7 +22,7 @@ Vagrant.configure("2") do |config|
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
-  # config.vm.network "forwarded_port", guest: 80, host: 8080
+  config.vm.network "forwarded_port", guest: 4000, host: 4000
 
   # Create a private network, which allows host-only access to the machine
   # using a specific IP.
@@ -31,7 +31,7 @@ Vagrant.configure("2") do |config|
   # Create a public network, which generally matched to bridged network.
   # Bridged networks make the machine appear as another physical device on
   # your network.
-  config.vm.network "public_network"
+  # config.vm.network "public_network"
 
   # Share an additional folder to the guest VM. The first argument is
   # the path on the host to the actual folder. The second argument is
@@ -65,14 +65,23 @@ Vagrant.configure("2") do |config|
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
   # documentation for more information about their specific syntax and use.
   config.vm.provision "shell", inline: <<-SHELL
-	sudo apt-get install apt-transport-https ca-certificates curl software-properties-common
-		
-	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-	
-	sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-	
-	sudo apt-get update
-	
-	sudo apt-get install docker-ce  
+    sudo apt-get install apt-transport-https ca-certificates curl software-properties-common
+      
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    
+    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+    
+    sudo apt-get update
+    
+    sudo apt-get install -y docker-ce
+    
+    curl -L https://github.com/docker/compose/releases/download/1.11.2/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+    
+    chmod +x /usr/local/bin/docker-compose
+
+    usermod -a -G docker ubuntu
+  
+    cd /vagrant 
+    docker-compose up -d
   SHELL
 end
