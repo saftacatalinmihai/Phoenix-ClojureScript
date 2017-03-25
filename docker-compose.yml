@@ -6,7 +6,7 @@ services:
     build: .
     command: mix phoenix.server
     volumes:
-      - ./code:/code
+      - ./code/backend:/code
     ports:
       - "4000:4000"
     depends_on:
