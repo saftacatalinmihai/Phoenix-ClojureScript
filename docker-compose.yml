@@ -1,15 +1,25 @@
 version: '2'
 services:
-  db:
-    image: postgres
-  web:
-    build: .
-    command: mix phoenix.server
+  frontend:
+    build: code/frontend
+    volumes:
+      - ./code/frontend:/code
+    ports:
+      - "3449:3449"
+    depends_on:
+      - backend
+    links:
+      - backend
+  backend:
+    build: code/backend
+    command: bash -c "mix ecto.create; mix phoenix.server"
     volumes:
       - ./code/backend:/code
     ports:
-      - "4000:4000"
+      - "4001:4000"
     depends_on:
       - db
     links:
       - db
+  db:
+    image: postgres
