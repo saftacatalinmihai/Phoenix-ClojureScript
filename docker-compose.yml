@@ -4,8 +4,6 @@ services:
     build: code/frontend
     volumes:
       - ./code/frontend:/code
-    ports:
-      - "3449:3449"
     depends_on:
       - backend
     links:
