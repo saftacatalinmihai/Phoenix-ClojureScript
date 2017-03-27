@@ -12,7 +12,7 @@ services:
       - backend
   backend:
     build: code/backend
-    command: bash -c "mix ecto.create; mix phoenix.server"
+    command: bash -c "npm install; mix deps.unlock --all; mix deps.update --all; mix ecto.create; mix phoenix.server"
     volumes:
       - ./code/backend:/code
     ports:
