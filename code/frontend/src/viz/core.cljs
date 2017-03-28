@@ -1,14 +1,13 @@
 (ns viz.core
-  (:use-macros
-    [dommy.macros :only [node sel sel1]])
   (:require
-    [dommy.core :as dommy]
+    [dommy.core :as dommy :refer-macros [sel sel1]]
     [quil.core :as   q
      :include-macros true]
     [quil.middleware :as m
      :include-macros     true]))
 
-(.log js/console "Hey Seymore sup?!")
+(defn js-log [data & rest]
+  (.log js/console data, rest))
 
 (def socket
   (new js/Phoenix.Socket
@@ -19,94 +18,124 @@
 
 (def channel (.channel socket "room:lobby" (clj->js {})))
 
-(def joinedChannel (.join channel))
-
-(.receive joinedChannel "ok" (fn[resp] (.log js/console "Joined successfully", resp)))
-(.receive joinedChannel "error" (fn[resp] (.log js/console "Unable to join", resp)))
-
 (defn channel_push[msg_type msg_body]
   (.push channel msg_type (clj->js msg_body)))
 
-(defn new_actor!
-  [e]
-  (if (== 13 (.-keyCode e))
-      (do
-        (.log js/console (dommy/value (sel1 :#new-actor)))
-        (.log js/console "New Actor")
-        (.receive
-          (channel_push "new_actor",
-                        {:name (dommy/value (sel1 :#new-actor))})
-          "ok" (fn[resp] (.log js/console "Actor created ok", resp))))))
+(def joinedChannel (.join channel))
+
+(def app_state (atom {}))
+(defn on_ready[]
+  ;; TODO: Use App state to hold all state reflected in the DOM
+  ;; Then make functions that take the state and render it
+  (swap! app_state assoc :actor_list [])
+
+  ;; Reset Actor List
+  (dommy/set-html! (sel1 :#actor-list) "")
+
+  (.receive joinedChannel "ok" (fn[resp]
+                                 (do
+                                   (js-log "Joined successfully")
+                                   (.receive
+                                     (channel_push "get_actors", {})
+                                     "ok" (fn [resp]
+                                            (let [resp_clj (js->clj resp)
+                                                  actor_list (get resp_clj "actors")]
+                                              (println actor_list)
+                                              (doseq [actor_name actor_list]
+                                                (dommy/append! (sel1 :#actor-list) (dommy/set-html! (dommy/create-element "LI") actor_name)))
+                                              ))))))
+  (.receive joinedChannel "error" (fn[resp] (js-log "Unable to join", resp)))
 
 
-(dommy/listen! (sel1 :#new-actor) :keyup new_actor!)
+  (defn new_actor!
+    [e]
+    (if (== 13 (.-keyCode e))
+        (do
+          (println (dommy/value (sel1 :#new-actor)))
+          (println "New Actor")
+          (.receive
+            (channel_push "new_actor",
+                          {:name (dommy/value (sel1 :#new-actor))})
+            "ok" (fn[resp]
+                   (let [resp_clj (js->clj resp)]
+                     (println "Actor created ok", resp_clj)
+                     (println (get resp_clj "name"))
+                     (println (get resp_clj "pid"))
+                     (dommy/append! (sel1 :#actor-list) (dommy/set-html! (dommy/create-element "LI") (get resp_clj "name")))
+                     ))))))
 
-;;===================;;
-;; Drawing functions ;;
-;;===================;;
 
-(def min-r 10)
-(def max-r 100)
-(def circle-diam 70)
+  (dommy/listen! (sel1 :#new-actor) :keyup new_actor!)
 
-;(defn new-actor-q [name]
-;  {:x (/ (q/width) 2) :y (/ (q/height) 2)})
+  ;;===================;;
+  ;; Drawing functions ;;
+  ;;===================;;
 
-(defn setup []
-  (q/fill 100)
-  {:x (/ (q/width) 2) :y (/ (q/height) 2) :pressed false})
+  (def min-r 10)
+  (def max-r 100)
+  (def circle-diam 70)
 
-;  {:actors [(new-actor-q "Actor1")]})
+  ;(defn new-actor-q [name]
+  ;  {:x (/ (q/width) 2) :y (/ (q/height) 2)})
 
-(defn draw [state]
-  (q/background 255)
-  ;  (doseq [actor (:actors state)]
-  (q/ellipse (:x state) (:y state) circle-diam circle-diam))
+  (defn setup []
+    (q/fill 100)
+    {:x (/ (q/width) 2) :y (/ (q/height) 2) :pressed false})
 
-;)
+  ;  {:actors [(new-actor-q "Actor1")]})
 
-(defn update_sketch [state]
-  state )
-  ; increase radius of the circle by 1 on each frame
-;  (update-in
-;    (cond (= max-r (:r state)) (assoc-in state [:movement] dec)
-;          (= min-r (:r state)) (assoc-in state [:movement] inc)
-;          :else                state)
-;    [:r] (:movement state)))
+  (defn draw [state]
+    (q/background 255)
+    ;  (doseq [actor (:actors state)]
+    (q/ellipse (:x state) (:y state) circle-diam circle-diam))
 
-; decrease radius by 1 but keeping it not less than min-r
-;(defn shrink [r]
-;  (max min-r (dec r)))
+  ;)
 
-(defn over-circle[x y diam]
-  (let [disX (- x (q/mouse-x))
-        disY (- y (q/mouse-y))]
-    (<
-      (q/sqrt (+ (q/sq disX) (q/sq disY)))
-      (/ diam 2))))
+  (defn update_sketch [state]
+    state )
+    ; increase radius of the circle by 1 on each frame
+  ;  (update-in
+  ;    (cond (= max-r (:r state)) (assoc-in state [:movement] dec)
+  ;          (= min-r (:r state)) (assoc-in state [:movement] inc)
+  ;          :else                state)
+  ;    [:r] (:movement state)))
 
-(defn mouse-pressed [state event]
-  (if (over-circle (:x state) (:y state) circle-diam)
-      (assoc-in state [:pressed] true)
-      state))
+  ; decrease radius by 1 but keeping it not less than min-r
+  ;(defn shrink [r]
+  ;  (max min-r (dec r)))
 
-(defn mouse-released [state event]
-    (assoc-in state [:pressed] false))
+  (defn over-circle[x y diam]
+    (let [disX (- x (q/mouse-x))
+          disY (- y (q/mouse-y))]
+      (<
+        (q/sqrt (+ (q/sq disX) (q/sq disY)))
+        (/ diam 2))))
 
-(defn mouse-dragged[state event]
-  (if (and (:pressed state) (over-circle (:x state) (:y state) circle-diam))
-      (-> state
-          (assoc-in [:x] ( + (:x state) (- (q/mouse-x) (q/pmouse-x))))
-          (assoc-in [:y] ( + (:y state) (- (q/mouse-y) (q/pmouse-y)))))
-      state ))
+  (defn mouse-pressed [state event]
+    (if (over-circle (:x state) (:y state) circle-diam)
+        (assoc-in state [:pressed] true)
+        state))
 
-(q/defsketch example
-  :host "canvas-id"
-  :size [400 400]
-  :setup setup
-  :draw draw
-  :update update_sketch
-  :mouse-pressed mouse-pressed
-  :mouse-released mouse-released
-  :mouse-dragged mouse-dragged
-  :middleware [m/fun-mode])
+  (defn mouse-released [state event]
+      (assoc-in state [:pressed] false))
+
+  (defn mouse-dragged[state event]
+    (if (and (:pressed state) (over-circle (:x state) (:y state) circle-diam))
+        (-> state
+            (assoc-in [:x] ( + (:x state) (- (q/mouse-x) (q/pmouse-x))))
+            (assoc-in [:y] ( + (:y state) (- (q/mouse-y) (q/pmouse-y)))))
+        state ))
+
+  (q/defsketch example
+    :host "canvas-id"
+    :size [400 400]
+    :setup setup
+    :draw draw
+    :update update_sketch
+    :mouse-pressed mouse-pressed
+    :mouse-released mouse-released
+    :mouse-dragged mouse-dragged
+    :middleware [m/fun-mode])
+)
+
+(js/jQuery (fn[] (on_ready)))

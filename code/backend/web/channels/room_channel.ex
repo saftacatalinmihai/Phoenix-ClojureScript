@@ -5,20 +5,31 @@ defmodule Backend.RoomChannel do
       {:ok, socket}
     end
 
+    def handle_in("get_actors", attrs, socket) do
+        actor_modules = Path.wildcard("code/*.ex") |>
+            Enum.map(fn file ->
+                String.replace_prefix(file, "code/", "") |>
+                String.replace_suffix(".ex", "")
+            end)
+
+        IO.inspect actor_modules
+        {:reply, {:ok, %{:actors => actor_modules}}, socket}
+    end
+
     def handle_in("new_actor", %{"name" => name}, socket) do
         IO.puts "new actor received"
 
-        case File.read("code/template_actor.ex") do
+        case File.read("code/template/actor.ex") do
           {:ok, body} ->
             new_actor_module = String.replace(body, "{{actor_name}}", name)
-            {:ok, file} = File.open "code/" <> name <> ".ex", [:write]
+            {:ok, file} = File.open "code/#{name}.ex", [:write]
             IO.binwrite file, new_actor_module
           {:error, reason} -> IO.inspect reason
         end
-        IO.inspect Code.eval_file("code/" <> name <> ".ex")
-        pid = Code.eval_string(name <> ".start_link()")
+        IO.inspect Code.eval_file("code/#{name}.ex")
+        {{:ok, pid}, _} = Code.eval_string("#{name}.start_link()")
         IO.inspect pid
 
-        {:reply, {:ok, %{:name => name}}, socket}
+        {:reply, {:ok, %{:name => name, :pid => to_string(:erlang.pid_to_list(pid))}}, socket}
     end
 end
