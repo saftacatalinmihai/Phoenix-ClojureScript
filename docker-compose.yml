@@ -2,6 +2,10 @@ version: '2'
 services:
   frontend:
     build: code/frontend
+    # Lein figwheel just for getting the dependencies
+    command: bash -c "lein figwheel; sleep infinity"
+    ports:
+          - "3449:3449"
     volumes:
       - ./code/frontend:/code
     depends_on:
