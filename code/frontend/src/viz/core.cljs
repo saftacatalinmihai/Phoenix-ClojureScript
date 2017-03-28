@@ -79,8 +79,26 @@
                    (let [resp_clj (js->clj resp)]
                      (println "Received", resp_clj)))))))
 
+  (defn update_actor_code!
+    [e]
+    (if (== 13 (.-keyCode e))
+        (do
+          (println "Update actor code")
+          (.receive
+            (channel_push "update_actor"
+                          {:name (dommy/value (sel1 :#update-actor-code))
+                           :actor_code ""})
+            "ok" (fn[resp]
+                   (let [resp_clj (js->clj resp)]
+                     (println "Received", resp_clj)))
+            "error" (fn[resp]
+                   (let [resp_clj (js->clj resp)]
+                     (println "Received error", resp_clj)))
+            ))))
+
   (dommy/listen! (sel1 :#new-actor)     :keyup new_actor!)
   (dommy/listen! (sel1 :#send-msg-msg)  :keyup send_msg!)
+  (dommy/listen! (sel1 :#update-actor-code)  :keyup update_actor_code!)
 
   ;;===================;;
   ;; Drawing functions ;;

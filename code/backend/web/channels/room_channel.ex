@@ -36,6 +36,22 @@ defmodule Backend.RoomChannel do
         {:reply, {:ok, %{:name => name, :pid => to_string(:erlang.pid_to_list(pid))}}, socket}
     end
 
+    def handle_in("update_actor", %{"name" => name, "actor_code" => code }, socket) do
+      IO.puts "update actor received"
+
+#      {:ok, file} = File.open "code/#{name}.ex", [:write]
+#      IO.binwrite file, code
+        try do
+            IO.inspect Code.eval_file("code/#{name}.ex")
+            IO.puts("Reload OK")
+            {:reply, {:ok, %{:success => true, :name => name}}, socket}
+        rescue
+            e ->
+            IO.inspect e
+            {:reply, {:ok, %{:success => false, :reson => e}}, socket}
+        end
+    end
+
     def handle_in("send_msg", %{"name" => name, "to_pid" => pid, "msg" => msg}, socket) do
         IO.puts "send msg"
         pid = :erlang.list_to_pid(to_charlist(pid))
@@ -43,13 +59,4 @@ defmodule Backend.RoomChannel do
         {:reply, {:ok, %{:received => rec}}, socket}
     end
 
-    def handle_in("update_actor", %{"name" => name, "actor_code" => code }, socket) do
-      IO.puts "update actor received"
-
-      {:ok, file} = File.open "code/#{name}.ex", [:write]
-      IO.binwrite file, code
-      IO.inspect Code.eval_file("code/#{name}.ex")
-
-      {:reply, {:ok, %{:name => name}}, socket}
-    end
 end
