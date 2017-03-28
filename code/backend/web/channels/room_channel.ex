@@ -5,6 +5,10 @@ defmodule Backend.RoomChannel do
       {:ok, socket}
     end
 
+    def get_module(module_string) do
+      :erlang.binary_to_existing_atom(module_string <> <<>>, :utf8)
+    end
+
     def handle_in("get_actors", attrs, socket) do
         actor_modules = Path.wildcard("code/*.ex") |>
             Enum.map(fn file ->
@@ -12,7 +16,6 @@ defmodule Backend.RoomChannel do
                 String.replace_suffix(".ex", "")
             end)
 
-        IO.inspect actor_modules
         {:reply, {:ok, %{:actors => actor_modules}}, socket}
     end
 
@@ -26,10 +29,27 @@ defmodule Backend.RoomChannel do
             IO.binwrite file, new_actor_module
           {:error, reason} -> IO.inspect reason
         end
-        IO.inspect Code.eval_file("code/#{name}.ex")
-        {{:ok, pid}, _} = Code.eval_string("#{name}.start_link()")
+        Code.eval_file("code/#{name}.ex")
+        {:ok, pid} = :"Elixir.#{name}".start_link
         IO.inspect pid
 
         {:reply, {:ok, %{:name => name, :pid => to_string(:erlang.pid_to_list(pid))}}, socket}
+    end
+
+    def handle_in("send_msg", %{"name" => name, "to_pid" => pid, "msg" => msg}, socket) do
+        IO.puts "send msg"
+        pid = :erlang.list_to_pid(to_charlist(pid))
+        rec = :"Elixir.#{name}".send_msg(pid, msg)
+        {:reply, {:ok, %{:received => rec}}, socket}
+    end
+
+    def handle_in("update_actor", %{"name" => name, "actor_code" => code }, socket) do
+      IO.puts "update actor received"
+
+      {:ok, file} = File.open "code/#{name}.ex", [:write]
+      IO.binwrite file, code
+      IO.inspect Code.eval_file("code/#{name}.ex")
+
+      {:reply, {:ok, %{:name => name}}, socket}
     end
 end

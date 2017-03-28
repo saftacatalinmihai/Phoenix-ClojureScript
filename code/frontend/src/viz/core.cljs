@@ -32,20 +32,20 @@
   ;; Reset Actor List
   (dommy/set-html! (sel1 :#actor-list) "")
 
-  (.receive joinedChannel "ok" (fn[resp]
-                                 (do
-                                   (js-log "Joined successfully")
-                                   (.receive
-                                     (channel_push "get_actors", {})
-                                     "ok" (fn [resp]
-                                            (let [resp_clj (js->clj resp)
-                                                  actor_list (get resp_clj "actors")]
-                                              (println actor_list)
-                                              (doseq [actor_name actor_list]
-                                                (dommy/append! (sel1 :#actor-list) (dommy/set-html! (dommy/create-element "LI") actor_name)))
-                                              ))))))
-  (.receive joinedChannel "error" (fn[resp] (js-log "Unable to join", resp)))
+  (.receive joinedChannel "ok"
+            (fn[resp]
+              (do
+                (js-log "Joined successfully")
+                (.receive
+                  (channel_push "get_actors", {})
+                  "ok" (fn [resp]
+                         (let [resp_clj (js->clj resp)
+                               actor_list (get resp_clj "actors")]
+                           (println actor_list)
+                           (doseq [actor_name actor_list]
+                             (dommy/append! (sel1 :#actor-list) (dommy/set-html! (dommy/create-element "LI") actor_name)))))))))
 
+  (.receive joinedChannel "error" (fn[resp] (js-log "Unable to join", resp)))
 
   (defn new_actor!
     [e]
@@ -64,8 +64,23 @@
                      (dommy/append! (sel1 :#actor-list) (dommy/set-html! (dommy/create-element "LI") (get resp_clj "name")))
                      ))))))
 
+  (defn send_msg!
+    [e]
+    (if (== 13 (.-keyCode e))
+        (do
+;          (println (dommy/value (sel1 :#send-msg)))
+          (println "Send msg")
+          (.receive
+            (channel_push "send_msg"
+                          {:name (dommy/value (sel1 :#send-msg-actor-name))
+                           :to_pid (dommy/value (sel1 :#send-msg-actor-pid)),
+                           :msg (dommy/value (sel1 :#send-msg-msg))})
+            "ok" (fn[resp]
+                   (let [resp_clj (js->clj resp)]
+                     (println "Received", resp_clj)))))))
 
-  (dommy/listen! (sel1 :#new-actor) :keyup new_actor!)
+  (dommy/listen! (sel1 :#new-actor)     :keyup new_actor!)
+  (dommy/listen! (sel1 :#send-msg-msg)  :keyup send_msg!)
 
   ;;===================;;
   ;; Drawing functions ;;

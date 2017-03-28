@@ -3,7 +3,15 @@ defmodule {{actor_name}} do
 
     def start_link do
        GenServer.start_link(__MODULE__, :ok, [])
-      end
+    end
+
+    def ping(server) do
+        GenServer.call(server, "ping")
+    end
+
+    def send_msg(server, msg) do
+      GenServer.call(server, msg)
+    end
 
     def init(:ok) do
         {:ok, %{}}
@@ -14,6 +22,11 @@ defmodule {{actor_name}} do
     end
 
     def handle_cast("ping", state) do
-      {:noreply, state}
+        {:noreply, state}
     end
+
+    def code_change(_old_vsn, old_state, _extra) do
+      {:ok, old_state}
+    end
+
 end
