@@ -11,10 +11,9 @@
         </style>
     </head>
     <body>
-    <div id="editor">defmodule Some.Module do
+        <div id="editor">defmodule Some.Module do
     use GenServer
 end</div>
-
         <label for="new-actor">New Actor  </label><input type="text" id="new-actor" name="new_actor" value="Actor1"/>
         <div>
             <h3>Send message</h3>
@@ -24,20 +23,14 @@ end</div>
         </div>
         <div>
             <h3>Update actor</h3>
-            <label for="send-msg-msg">Update Actor name:  </label><input type="text" id="update-actor-code" value="Actor1"><br/>
+            <label for="update-actor-code">Update Actor name:  </label><input type="text" id="update-actor-code" value="Actor1"><br/>
         </div>
         <p>Actor List:</p>
         <ul id="actor-list"></ul>
 
-        <script src="https://cdn.jsdelivr.net/ace/1.2.6/min/ace.js" type="text/javascript" charset="utf-8"></script>
-        <script>
-            var editor = ace.edit("editor");
-            editor.setTheme("ace/theme/monokai");
-            editor.getSession().setMode("ace/mode/elixir");
-        </script>
-
         <canvas id="canvas-id"></canvas>
 
+        <script src="https://cdn.jsdelivr.net/ace/1.2.6/min/ace.js" type="text/javascript" charset="utf-8"></script>
         <script src="../../code/backend/deps/phoenix/priv/static/phoenix.js" type="text/javascript"></script>
         <script src="https://code.jquery.com/jquery-3.2.1.min.js" type="text/javascript"></script>
         <script src="main.js" type="text/javascript"></script>

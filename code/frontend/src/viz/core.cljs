@@ -29,6 +29,11 @@
   ;; Then make functions that take the state and render it
   (swap! app_state assoc :actor_list [])
 
+  (-> (js/ace.edit "editor")
+      ((fn[e] (.setTheme e "ace/theme/monokai") e))
+      .getSession
+      (.setMode "ace/mode/elixir"))
+
   ;; Reset Actor List
   (dommy/set-html! (sel1 :#actor-list) "")
 
