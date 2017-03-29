@@ -10,7 +10,8 @@ defmodule Backend.RoomChannel do
     end
 
     def handle_in("get_actors", attrs, socket) do
-        actor_modules = Path.wildcard("code/*.ex") |>
+        actor_modules =
+            Path.wildcard("code/*.ex") |>
             Enum.map(fn file ->
                 String.replace_prefix(file, "code/", "") |>
                 String.replace_suffix(".ex", "")
@@ -24,16 +25,15 @@ defmodule Backend.RoomChannel do
 
         case File.read("code/template/actor.ex") do
           {:ok, body} ->
-            new_actor_module = String.replace(body, "{{actor_name}}", name)
             {:ok, file} = File.open "code/#{name}.ex", [:write]
-            IO.binwrite file, new_actor_module
-          {:error, reason} -> IO.inspect reason
+            IO.binwrite file, String.replace(body, "{{actor_name}}", name)
+            Code.eval_file("code/#{name}.ex")
+            {:ok, pid} = :"Elixir.#{name}".start_link
+            {:reply, {:ok, %{:name => name, :pid => to_string(:erlang.pid_to_list(pid))}}, socket}
+          {:error, reason} ->
+            IO.inspect reason
+            {:reply, {:error, %{:reason => reason}}, socket}
         end
-        Code.eval_file("code/#{name}.ex")
-        {:ok, pid} = :"Elixir.#{name}".start_link
-        IO.inspect pid
-
-        {:reply, {:ok, %{:name => name, :pid => to_string(:erlang.pid_to_list(pid))}}, socket}
     end
 
     def handle_in("update_actor", %{"name" => name, "actor_code" => code }, socket) do
@@ -43,11 +43,11 @@ defmodule Backend.RoomChannel do
       IO.binwrite file, code
         try do
             IO.inspect Code.eval_file("code/#{name}.ex")
-            {:reply, {:ok, %{:success => true, :name => name}}, socket}
+            {:reply, {:ok, %{:name => name}}, socket}
         rescue
             e ->
             IO.inspect e
-            {:reply, {:ok, %{:success => false, :reson => e}}, socket}
+            {:reply, {:error, %{:reson => e}}, socket}
         end
     end
 
@@ -56,7 +56,7 @@ defmodule Backend.RoomChannel do
           {:ok, body} ->
             {:reply, {:ok, %{:code => body}}, socket}
           {:error, reason} ->
-            {:reply, {:ok, %{:error => reason}}, socket}
+            {:reply, {:error, %{:reason => reason}}, socket}
         end
     end
 

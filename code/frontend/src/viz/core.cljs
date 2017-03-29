@@ -22,24 +22,22 @@
 (defn channel_push
   ([msg_type msg_body]
     (channel_push msg_type msg_body
-                  (fn[resp]
-                    (let [resp_clj (js->clj resp)]
-                      (println "Received", resp_clj)))))
+                  (fn[resp] (let [resp_clj (js->clj resp)]
+                              (println "Received", resp_clj)))))
   ([msg_type msg_body on_ok]
     (channel_push msg_type msg_body on_ok
-                  (fn[resp]
-                    (let [resp_clj (js->clj resp)]
-                      (println "Received error", resp_clj)))))
+                  (fn[resp] (let [resp_clj (js->clj resp)]
+                              (println "Received error", resp_clj)))))
   ([msg_type msg_body on_ok on_error]
     (channel_push msg_type msg_body on_ok on_error
-                  (fn[resp]
-                    (let [resp_clj (js->clj resp)]
-                      (println "Received Timeout", resp_clj)))))
+                  (fn[resp] (let [resp_clj (js->clj resp)]
+                              (println "Received Timeout", resp_clj)))))
   ([msg_type msg_body on_ok on_error on_timeout]
     (let [pushEvent (.push channel msg_type (clj->js msg_body))]
-      (.receive pushEvent "ok" #(on_ok (js->clj %)))
-      (.receive pushEvent "error" on_error)
-      (.receive pushEvent "timeout" on_timeout))))
+      (-> pushEvent
+          (.receive "ok" #(on_ok (js->clj %)))
+          (.receive "error" #(on_error (js->clj %)))
+          (.receive "timeout" #(on_timeout (js->clj %)))))))
 
 (def joinedChannel (.join channel))
 
