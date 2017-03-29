@@ -1,12 +1,9 @@
 defmodule {{actor_name}} do
     use GenServer
+    require Logger
 
     def start_link do
        GenServer.start_link(__MODULE__, :ok, [])
-    end
-
-    def code_change(server) do
-      :sys
     end
 
     def ping(server) do
@@ -29,9 +26,10 @@ defmodule {{actor_name}} do
         {:noreply, state}
     end
 
-    def code_change(_old_vsn, old_state, _extra) do
+    def code_change(old_vsn, old_state, _extra) do
         IO.puts "Code change"
-        IO.inspect _old_vsn
+        Logger.info "Code change"
+        IO.inspect old_vsn
         {:ok, old_state}
     end
 

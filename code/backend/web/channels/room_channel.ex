@@ -43,7 +43,6 @@ defmodule Backend.RoomChannel do
       IO.binwrite file, code
         try do
             IO.inspect Code.eval_file("code/#{name}.ex")
-            IO.puts("Reload OK")
             {:reply, {:ok, %{:success => true, :name => name}}, socket}
         rescue
             e ->
