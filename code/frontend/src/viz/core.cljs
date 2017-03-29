@@ -47,7 +47,7 @@
 (defn update_actor_code![editor]
   (channel_push
     "update_actor"
-    {:name       (dommy/value (sel1 :#update-actor-code))
+    {:name       (dommy/value (sel1 :#current-actor-code))
      :actor_code (.getValue editor)}))
 
 (def editor (js/ace.edit "editor"))
@@ -65,6 +65,9 @@
   (.setMode "ace/mode/elixir"))
 
 (def app_state (atom {}))
+
+(defn update_curent_actor![actor_name]
+  (dommy/set-value! (sel1 :#current-actor-code) actor_name))
 
 (defn on_ready[]
   ;; TODO: Use App state to hold all state reflected in the DOM
@@ -86,6 +89,7 @@
     (-> e
         .-srcElement
         .-innerText
+        ((fn[actor_name] (update_curent_actor! actor_name) actor_name))
         get_actor_code!))
 
   (defn add_to_actor_list[actor_name]
@@ -137,78 +141,71 @@
 
   (dommy/listen! (sel1 :#new-actor) :keyup new_actor!)
   (dommy/listen! (sel1 :#send-msg-msg) :keyup send_msg!)
-
-  ;;===================;;
-  ;; Drawing functions ;;
-  ;;===================;;
-
-  (def min-r 10)
-
-  (def max-r 100)
-
-  (def circle-diam 70)
-
-  ;(defn new-actor-q [name]
-  ;  {:x (/ (q/width) 2) :y (/ (q/height) 2)})
-
-  (defn setup []
-    (q/fill 100)
-    {:x (/ (q/width) 2) :y (/ (q/height) 2) :pressed false})
-
-  ;  {:actors [(new-actor-q "Actor1")]})
-
-  (defn draw [state]
-    (q/background 255)
-    ;  (doseq [actor (:actors state)]
-    (q/ellipse (:x state) (:y state) circle-diam circle-diam))
-
-  ;)
-
-  (defn update_sketch [state]
-    state)
-
-  ; increase radius of the circle by 1 on each frame
-  ;  (update-in
-  ;    (cond (= max-r (:r state)) (assoc-in state [:movement] dec)
-  ;          (= min-r (:r state)) (assoc-in state [:movement] inc)
-  ;          :else                state)
-  ;    [:r] (:movement state)))
-
-  ; decrease radius by 1 but keeping it not less than min-r
-  ;(defn shrink [r]
-  ;  (max min-r (dec r)))
-
-  (defn over-circle[x y diam]
-    (let [disX (- x (q/mouse-x))
-          disY (- y (q/mouse-y))]
-      (<
-        (q/sqrt (+ (q/sq disX) (q/sq disY)))
-        (/ diam 2))))
-
-  (defn mouse-pressed [state event]
-    (if (over-circle (:x state) (:y state) circle-diam)
-        (assoc-in state [:pressed] true)
-        state))
-
-  (defn mouse-released [state event]
-    (assoc-in state [:pressed] false))
-
-  (defn mouse-dragged[state event]
-    (if (and (:pressed state) (over-circle (:x state) (:y state) circle-diam))
-        (-> state
-            (assoc-in [:x] (+ (:x state) (- (q/mouse-x) (q/pmouse-x))))
-            (assoc-in [:y] (+ (:y state) (- (q/mouse-y) (q/pmouse-y)))))
-        state))
-
-  (q/defsketch example
-    :host "canvas-id"
-    :size [400 400]
-    :setup setup
-    :draw draw
-    :update update_sketch
-    :mouse-pressed mouse-pressed
-    :mouse-released mouse-released
-    :mouse-dragged mouse-dragged
-    :middleware [m/fun-mode]))
+  )
 
 (js/jQuery (fn[] (on_ready)))
+
+;;===================;;
+;; Drawing functions ;;
+;;===================;;
+
+(def min-r 10)
+
+(def max-r 100)
+
+(def circle-diam 70)
+
+;(defn new-actor-q [name]
+;  {:x (/ (q/width) 2) :y (/ (q/height) 2)})
+
+(defn setup []
+  (q/fill 100)
+  {:x (/ (q/width) 2) :y (/ (q/height) 2) :pressed false})
+
+;  {:actors [(new-actor-q "Actor1")]})
+
+(defn draw [state]
+  (q/background 255)
+  ;  (doseq [actor (:actors state)]
+  (q/fill 100)
+  (q/ellipse (:x state) (:y state) circle-diam circle-diam)
+  (q/fill 200)
+  (q/text "Test" (/ (q/width) 2)  (/ (q/height) 2) (+ 100 (/ (q/width) 2))  (+ 100 (/ (q/height) 2)))
+  )
+
+(defn update_sketch [state]
+  state)
+
+(defn over-circle[x y diam]
+  (let [disX (- x (q/mouse-x))
+        disY (- y (q/mouse-y))]
+    (<
+      (q/sqrt (+ (q/sq disX) (q/sq disY)))
+      (/ diam 2))))
+
+(defn mouse-pressed [state event]
+  (if (over-circle (:x state) (:y state) circle-diam)
+      (assoc-in state [:pressed] true)
+      state))
+
+(defn mouse-released [state event]
+  (assoc-in state [:pressed] false))
+
+(defn mouse-dragged[state event]
+  (if (and (:pressed state) (over-circle (:x state) (:y state) circle-diam))
+      (-> state
+          (assoc-in [:x] (+ (:x state) (- (q/mouse-x) (q/pmouse-x))))
+          (assoc-in [:y] (+ (:y state) (- (q/mouse-y) (q/pmouse-y)))))
+      state))
+
+(q/defsketch example
+  :host "canvas-id"
+  :size [(-> js/window js/jQuery .width (#(- % 10))) 400] ;; Set the Width to the window size
+  :setup setup
+  :draw draw
+  :update update_sketch
+  :mouse-pressed mouse-pressed
+  :mouse-released mouse-released
+  :mouse-dragged mouse-dragged
+  :middleware [m/fun-mode])
+
