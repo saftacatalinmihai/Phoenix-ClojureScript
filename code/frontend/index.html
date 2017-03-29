@@ -11,9 +11,7 @@
         </style>
     </head>
     <body>
-        <div id="editor">defmodule Some.Module do
-    use GenServer
-end</div>
+        <div id="editor"></div>
         <label for="new-actor">New Actor  </label><input type="text" id="new-actor" name="new_actor" value="Actor1"/>
         <div>
             <h3>Send message</h3>
@@ -25,9 +23,10 @@ end</div>
             <h3>Update actor</h3>
             <label for="update-actor-code">Update Actor name:  </label><input type="text" id="update-actor-code" value="Actor1"><br/>
         </div>
-        <p>Actor List:</p>
-        <ul id="actor-list"></ul>
-
+        <div class="actor-list">
+            <p>Actor List:</p>
+            <ul id="actor-list"></ul>
+        </div>
         <canvas id="canvas-id"></canvas>
 
         <script src="https://cdn.jsdelivr.net/ace/1.2.6/min/ace.js" type="text/javascript" charset="utf-8"></script>

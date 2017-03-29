@@ -29,16 +29,55 @@
   ;; Then make functions that take the state and render it
   (swap! app_state assoc :actor_list [])
 
-  (-> (js/ace.edit "editor")
+  (defn update_actor_code![editor]
+    (.receive
+      (channel_push "update_actor"
+                    {:name (dommy/value (sel1 :#update-actor-code))
+                     :actor_code (.getValue editor)})
+      "ok" (fn[resp]
+             (let [resp_clj (js->clj resp)]
+               (println "Received", resp_clj)))
+      "error" (fn[resp]
+                (let [resp_clj (js->clj resp)]
+                  (println "Received error", resp_clj)))))
+
+  (def editor (js/ace.edit "editor"))
+
+  (-> editor
       ((fn[e] (.setTheme e "ace/theme/monokai") e))
+      ((fn[e]
+         (.addCommand (.-commands e) (clj->js {
+                                               :name "save"
+                                               :bindKey {:win "Ctrl-S" :mac "Cmd-S"}
+                                               :exec (fn[editor] (update_actor_code! editor))
+                                               }))
+         e))
       .getSession
       (.setMode "ace/mode/elixir"))
 
   ;; Reset Actor List
   (dommy/set-html! (sel1 :#actor-list) "")
 
+  (defn set_code_in_editor[code]
+    (.setValue editor code))
+
+  (defn get_actor_code![actor_name]
+    (.receive
+      (channel_push "get_actor_code", {:name actor_name})
+      "ok" (fn [resp]
+             (let [resp_clj (js->clj resp)]
+               (set_code_in_editor (get resp_clj "code"))))))
+
+  (defn on_actor_click![e]
+    (-> e
+        .-srcElement
+        .-innerText
+        get_actor_code!))
+
   (defn add_to_actor_list[actor_name]
-    (dommy/append! (sel1 :#actor-list) (dommy/set-html! (dommy/create-element "LI") actor_name)))
+    (let [elem (dommy/create-element "LI")]
+      (dommy/append! (sel1 :#actor-list) (dommy/set-html! elem actor_name))
+      (dommy/listen! elem :click on_actor_click!)))
 
   (.receive joinedChannel "ok"
             (fn[resp]
@@ -87,26 +126,16 @@
                    (let [resp_clj (js->clj resp)]
                      (println "Received", resp_clj)))))))
 
-  (defn update_actor_code!
+  (defn update_actor_code_on_enter!
     [e]
     (if (== 13 (.-keyCode e))
         (do
           (println "Update actor code")
-          (.receive
-            (channel_push "update_actor"
-                          {:name (dommy/value (sel1 :#update-actor-code))
-                           :actor_code ""})
-            "ok" (fn[resp]
-                   (let [resp_clj (js->clj resp)]
-                     (println "Received", resp_clj)))
-            "error" (fn[resp]
-                   (let [resp_clj (js->clj resp)]
-                     (println "Received error", resp_clj)))
-            ))))
+          (update_actor_code! editor ))))
 
   (dommy/listen! (sel1 :#new-actor)     :keyup new_actor!)
   (dommy/listen! (sel1 :#send-msg-msg)  :keyup send_msg!)
-  (dommy/listen! (sel1 :#update-actor-code)  :keyup update_actor_code!)
+  (dommy/listen! (sel1 :#update-actor-code)  :keyup update_actor_code_on_enter!)
 
   ;;===================;;
   ;; Drawing functions ;;

@@ -39,8 +39,8 @@ defmodule Backend.RoomChannel do
     def handle_in("update_actor", %{"name" => name, "actor_code" => code }, socket) do
       IO.puts "update actor received"
 
-#      {:ok, file} = File.open "code/#{name}.ex", [:write]
-#      IO.binwrite file, code
+      {:ok, file} = File.open "code/#{name}.ex", [:write]
+      IO.binwrite file, code
         try do
             IO.inspect Code.eval_file("code/#{name}.ex")
             IO.puts("Reload OK")
@@ -49,6 +49,15 @@ defmodule Backend.RoomChannel do
             e ->
             IO.inspect e
             {:reply, {:ok, %{:success => false, :reson => e}}, socket}
+        end
+    end
+
+    def handle_in("get_actor_code", %{"name" => name}, socket) do
+        case File.read("code/#{name}.ex") do
+          {:ok, body} ->
+            {:reply, {:ok, %{:code => body}}, socket}
+          {:error, reason} ->
+            {:reply, {:ok, %{:error => reason}}, socket}
         end
     end
 
