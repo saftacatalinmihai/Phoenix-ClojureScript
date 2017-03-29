@@ -37,6 +37,9 @@
   ;; Reset Actor List
   (dommy/set-html! (sel1 :#actor-list) "")
 
+  (defn add_to_actor_list[actor_name]
+    (dommy/append! (sel1 :#actor-list) (dommy/set-html! (dommy/create-element "LI") actor_name)))
+
   (.receive joinedChannel "ok"
             (fn[resp]
               (do
@@ -48,7 +51,7 @@
                                actor_list (get resp_clj "actors")]
                            (println actor_list)
                            (doseq [actor_name actor_list]
-                             (dommy/append! (sel1 :#actor-list) (dommy/set-html! (dommy/create-element "LI") actor_name)))))))))
+                             (add_to_actor_list actor_name))))))))
 
   (.receive joinedChannel "error" (fn[resp] (js-log "Unable to join", resp)))
 
@@ -66,8 +69,8 @@
                      (println "Actor created ok", resp_clj)
                      (println (get resp_clj "name"))
                      (println (get resp_clj "pid"))
-                     (dommy/append! (sel1 :#actor-list) (dommy/set-html! (dommy/create-element "LI") (get resp_clj "name")))
-                     ))))))
+                     (add_to_actor_list (get resp_clj "name")))
+                     )))))
 
   (defn send_msg!
     [e]
