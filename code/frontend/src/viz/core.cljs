@@ -1,13 +1,9 @@
 (ns viz.core
   (:require
-    [viz.channel :as channel]
-    [viz.graphics :as graphics]
     [dommy.core :as dommy
      :refer-macros  [sel sel1]]
-    [quil.core :as   q
-     :include-macros true]
-    [quil.middleware :as m
-     :include-macros     true]))
+    [viz.channel :as channel]
+    [viz.graphics :as graphics]))
 
 (defn js-log [data & rest]
   (.log js/console data, rest))
@@ -39,7 +35,6 @@
   (dommy/add-class! (sel1 :#current-actor-code-div) "is-dirty"))
 
 (defn on_ready[]
-  (graphics/init)
   ;; TODO: Use App state to hold all state reflected in the DOM
   ;; Then make functions that take the state and render it
   (swap! app_state assoc :actor_list [])
@@ -103,8 +98,14 @@
           (println "Update actor code")
           (update_actor_code! editor))))
 
+
   (dommy/listen! (sel1 :#new-actor) :keyup new_actor!)
-  (dommy/listen! (sel1 :#send-msg-msg) :keyup send_msg!))
+  (dommy/listen! (sel1 :#send-msg-msg) :keyup send_msg!)
+
+  (graphics/init (sel1 :#canvas) (-> js/window js/jQuery .width (#(* % (/ 5 10)))) 600) ;; Set the Width to the window size)
+;  (graphics/init)
+
+  )
 
 (js/jQuery (fn[] (on_ready)))
 

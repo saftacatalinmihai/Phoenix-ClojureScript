@@ -5,7 +5,7 @@
                  [org.clojure/clojurescript "1.9.229"]]
   :plugins [[lein-figwheel "0.5.8"]]
   :clean-targets [:target-path "out"]
-  :optimizations :none
+;  :optimizations :none
   :cljsbuild {
     :builds [{:id "dev"
               :source-paths ["src"]
