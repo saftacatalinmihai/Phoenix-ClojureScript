@@ -26,9 +26,9 @@
 (defn create_actor[app EVENTCHANNEL x y color pid]
   (def actor_graphics (new js/PIXI.Graphics))
   (-> actor_graphics
-      (.lineStyle 0)
-      (.beginFill color 0.5)
-      (.drawCircle x y 100)
+      (.lineStyle 4 color 1)
+      (.beginFill color 0.6)
+      (.drawCircle x y 50)
       (.endFill))
 
   (set! (.-boundsPadding actor_graphics) 0)
