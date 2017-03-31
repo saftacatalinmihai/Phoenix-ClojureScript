@@ -1,114 +1,72 @@
-(ns viz.graphics
-  (:require
-    [quil.core :as   q
-     :include-macros true]
-    [quil.middleware :as m
-     :include-macros     true]))
+(ns viz.graphics)
 
-(defn init[canvas width height]
-  (println height)
-  (println width)
-  (def app (new js/PIXI.Application 800, 600, (clj->js { "antialias" true })))
-  (.log js/console app)
-  (.appendChild (.-body js/document) (-> app .-view))
+(defn onDragStart[e]
+  (this-as this
+           (do
+             (set! (.-data this) (.-data e))
+             (set! (.-alpha this) 0.5)
+             (set! (.-dragging this) true))))
 
-  (def graphics (new js/PIXI.Graphics))
+(defn onDragEnd[]
+  (this-as this
+           (do
+             (set! (.-alpha this) 1)
+             (set! (.-dragging this) false))))
 
-  (.beginFill graphics 0xFF3300)
-  (.lineStyle graphics 4, 0xffd900, 1)
-  (.drawCircle graphics 470, 90,60)
+(defn onDragMove[e]
+  (this-as this
+           (if (.-dragging this)
+               (let [newP (.getLocalPosition (.-data this) (.-parent this))]
+                 (set! (.-x this) (.-x newP))
+                 (set! (.-y this) (.-y newP))))))
 
+(defn create_actor[x y]
+  (def actor_graphics (new js/PIXI.Graphics))
+  (-> actor_graphics
+      (.lineStyle 0)
+      (.beginFill 0xFF00BB 0.25)
+      (.drawCircle x y 100)
+      (.endFill))
 
-  )
+  (set! (.-boundsPadding actor_graphics) 0)
 
-(defn init2[size update_sketch]
+  (def actor_sprite (new js/PIXI.Sprite (.generateTexture actor_graphics)))
 
-  (def state_atom (atom {}))
+  (set! (.-interactive actor_sprite) true)
+  (set! (.-buttonMode actor_sprite) true)
+  (.anchor.set actor_sprite 0.5)
 
-  (def min-r 10)
-  (def max-r 100)
-  (def circle-diam 70)
+  (set! (.-x actor_sprite) x)
+  (set! (.-y actor_sprite) y)
 
-  (defn setup []
-    (q/fill 100)
-    {:actors     [{:x       (/ (q/width) 2)
-                   :y       (/ (q/height) 2)
-                   :color   150
-                   :name    "Actor1"
-                   :pid     "<0.1.0>"
-                   :pressed false}]
-     :num-actors 4})
+  (-> actor_sprite
+      (.on "pointerdown" onDragStart)
+      (.on "pointerup" onDragEnd)
+      (.on "pointerupoutside" onDragEnd)
+      (.on "pointermove" onDragMove))
 
-  (defn add_actor[state]
-    (if (> (:num-actors state) 0)
-        (do
-          (println "Add actor")
-;          (println state)
-          (println (:num-actors state))
-          (update-in (update-in state [:actors]
-                   #(conj % {:x       50
-                             :y       50
-                             :color   150
-                             :name    "Actor5"
-                             :pid     "<0.1.0>"
-                             :pressed false})) [:num-actors] dec))
-        state
-        ))
+  (.stage.addChild app actor_sprite))
 
-  ;; Actor state keys: :x :y :color :name :pid :pressed
-  (defn draw-actor[{x :x y :y color :color name :name pid :pid}]
-    (q/fill color)
-    (q/ellipse x y circle-diam circle-diam))
+(defn init[mount_elem width height]
+  (def app (new js/PIXI.Application width, height, (clj->js {"antialias" true})))
+  (.appendChild mount_elem (.-view app))
 
-  (defn draw [state]
-    (q/background 255)
-    (doseq [actor (:actors state)]
-      (draw-actor actor)))
+  (create_actor 0 0)
+  (create_actor 50 50)
+  (create_actor 200 200))
 
-  (defn over-circle[x y diam]
-    (let [disX (- x (q/mouse-x))
-          disY (- y (q/mouse-y))]
-      (<
-        (q/sqrt (+ (q/sq disX) (q/sq disY)))
-        (/ diam 2))))
-
-  (defn mouse-pressed [state event]
-    (let [new_actors_state
-           (map
-             (fn[actor_state]
-               (if (over-circle (:x actor_state) (:y actor_state) circle-diam)
-                   (assoc-in actor_state [:pressed] true)
-                   actor_state))
-             (:actors state))]
-      (assoc-in state [:actors] new_actors_state)))
-
-  (defn mouse-released [state event]
-    (let [new_actors_state
-           (map
-             (fn[actor_state]
-               (assoc-in actor_state [:pressed] false))
-             (:actors state))]
-      (assoc-in state [:actors] new_actors_state)))
-
-  (defn mouse-dragged[state event]
-    (assoc-in state [:actors]
-              (map
-                (fn[actor_state]
-                  (if (and (:pressed actor_state)
-                           (over-circle (:x actor_state) (:y actor_state) circle-diam))
-                      (-> actor_state
-                          (assoc-in [:x] (+ (:x actor_state) (- (q/mouse-x) (:x actor_state))))
-                          (assoc-in [:y] (+ (:y actor_state) (- (q/mouse-y) (:y actor_state)))))
-                      actor_state))
-                (:actors state))))
-
-  (q/defsketch actorviz
-    :host "canvas-id"
-    :size size
-    :setup setup
-    :draw draw
-    :update add_actor
-    :mouse-pressed mouse-pressed
-    :mouse-released mouse-released
-    :mouse-dragged mouse-dragged
-    :middleware [m/fun-mode]))
+;
+;  (defn draw_actor[{g :actor_graphics f :fill ls :line_style x :x y :y r :r}]
+;    (-> g
+;        (.lineStyle (:lineWidth ls))
+;        (.beginFill (:color f) (:alpha f))
+;        (.drawCircle x y r)
+;        (.endFill)))
+;
+;  (draw_actor
+;    {:actor_graphics actor_graphics
+;     :fill           {:color 0xFF00BB :alpha 0.25}
+;     :line_style     {:lineWidth 0}
+;     :x              470
+;     :y              200
+;     :r              60}))
