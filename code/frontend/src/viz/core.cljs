@@ -8,7 +8,6 @@
     [viz.graphics :as graphics]
     [cljs.core.async :refer [put! chan <! >! timeout close!]]))
 
-
 (defonce actors
   (r/atom {
             "pid1" {:x 0 :y 0 :color 0xFF00BB}
@@ -26,16 +25,14 @@
          (let [[event-name event-data] (<! EVENTCHANNEL)]
            ((event-name EVENTS) event-data))))
 
-
-
 (defn pixi []
   [:div {:id "pixi-js"}])
 
 (r/render [pixi]
   (js/document.querySelector "#pixi-mount"))
 
-(graphics/init
+(def app (graphics/init
   actors
   EVENTCHANNEL
   (js/document.querySelector "#pixi-js")
-  (-> js/window js/jQuery .width (#(* % (/ 5 10)))) 600)
+  (-> js/window js/jQuery .width (#(* % (/ 5 10)))) 600))

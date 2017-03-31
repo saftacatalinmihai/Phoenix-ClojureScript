@@ -62,6 +62,9 @@
   (doseq [actor @actors]
     (let [[pid state] actor
            {x :x y :y c :color} state]
-      (js/console.log x, y, c)
       (create_actor app EVCHANNEL x y c pid)
-      )))
+      ))
+  app)
+
+(defn add_actor_on_stage [app EVENTCHANNEL x y c pid]
+    (create_actor app EVENTCHANNEL x y c pid))
