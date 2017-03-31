@@ -20,8 +20,6 @@
   (this-as this
            (if (.-dragging this)
                (let [newP (.getLocalPosition (.-data this) (.-parent this))]
-                 (set! (.-x this) (.-x newP))
-                 (set! (.-y this) (.-y newP))
                  (put! (.-eventChannel this) [:update-actor-state {:pid (.-pid this) :state {:x (.-x newP) :y (.-y newP) :color (.-color this)} }])))))
 
 (defn create_actor[app EVENTCHANNEL x y color pid]
@@ -62,8 +60,14 @@
   (doseq [actor @actors]
     (let [[pid state] actor
            {x :x y :y c :color} state]
-      (create_actor app EVCHANNEL x y c pid)
-      ))
+      (let [actor_sprite (create_actor app EVCHANNEL x y c pid)]
+        (add-watch actors pid
+                   (fn[key atom old-state new-state]
+                     (set! (.-x actor_sprite) (:x (get new-state pid)))
+                     (set! (.-y actor_sprite) (:y (get new-state pid)))
+                     )))
+        )
+      )
   app)
 
 (defn add_actor_on_stage [app EVENTCHANNEL x y c pid]
