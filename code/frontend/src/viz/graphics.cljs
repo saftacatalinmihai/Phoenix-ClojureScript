@@ -1,4 +1,7 @@
-(ns viz.graphics)
+(ns viz.graphics
+  (:require
+    [reagent.core :as r]
+    [cljs.core.async :refer [put! chan <! >! timeout close!]]))
 
 (defn onDragStart[e]
   (this-as this
@@ -18,9 +21,10 @@
            (if (.-dragging this)
                (let [newP (.getLocalPosition (.-data this) (.-parent this))]
                  (set! (.-x this) (.-x newP))
-                 (set! (.-y this) (.-y newP))))))
+                 (set! (.-y this) (.-y newP))
+                 (put! (.-eventChannel this) [:update-actor-state {:pid (.-pid this) :state {:x (.-x newP) :y (.-y newP) :color 0x0000BB} }])))))
 
-(defn create_actor[app x y color]
+(defn create_actor[app EVENTCHANNEL x y color pid]
   (def actor_graphics (new js/PIXI.Graphics))
   (-> actor_graphics
       (.lineStyle 0)
@@ -38,6 +42,8 @@
 
   (set! (.-x actor_sprite) x)
   (set! (.-y actor_sprite) y)
+  (set! (.-eventChannel actor_sprite) EVENTCHANNEL)
+  (set! (.-pid actor_sprite) pid)
 
   (-> actor_sprite
       (.on "pointerdown" onDragStart)
@@ -45,12 +51,16 @@
       (.on "pointerupoutside" onDragEnd)
       (.on "pointermove" onDragMove))
 
-  (.stage.addChild app actor_sprite))
+  (.stage.addChild app actor_sprite)
+  actor_sprite)
 
-(defn init[mount_elem width height]
+(defn init[actors EVCHANNEL mount_elem width height]
   (def app (new js/PIXI.Application width, height, (clj->js {"antialias" true})))
   (.appendChild mount_elem (.-view app))
 
-  (create_actor app 0 0 0xFF00BB)
-  (create_actor app 50 50 0x227788)
-  (create_actor app 200 200 0x00FFAA))
+  (doseq [actor @actors]
+    (let [[pid state] actor
+           {x :x y :y c :color} state]
+      (js/console.log x, y, c)
+      (create_actor app EVCHANNEL x y c pid)
+      )))
