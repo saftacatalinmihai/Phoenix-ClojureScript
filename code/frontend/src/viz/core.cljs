@@ -20,7 +20,7 @@
 
 (def EVENTS
   {:update-actor-state (fn [{pid :pid state :state}]
-                         (swap! actors assoc-in [:pid] state))})
+                         (swap! actors assoc-in [pid] state))})
 (go
   (while true
          (let [[event-name event-data] (<! EVENTCHANNEL)]

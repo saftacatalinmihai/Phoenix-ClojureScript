@@ -22,7 +22,7 @@
                (let [newP (.getLocalPosition (.-data this) (.-parent this))]
                  (set! (.-x this) (.-x newP))
                  (set! (.-y this) (.-y newP))
-                 (put! (.-eventChannel this) [:update-actor-state {:pid (.-pid this) :state {:x (.-x newP) :y (.-y newP) :color 0x0000BB} }])))))
+                 (put! (.-eventChannel this) [:update-actor-state {:pid (.-pid this) :state {:x (.-x newP) :y (.-y newP) :color (.-color this)} }])))))
 
 (defn create_actor[app EVENTCHANNEL x y color pid]
   (def actor_graphics (new js/PIXI.Graphics))
@@ -42,6 +42,7 @@
 
   (set! (.-x actor_sprite) x)
   (set! (.-y actor_sprite) y)
+  (set! (.-color actor_sprite) color)
   (set! (.-eventChannel actor_sprite) EVENTCHANNEL)
   (set! (.-pid actor_sprite) pid)
 
