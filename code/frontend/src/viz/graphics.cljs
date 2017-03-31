@@ -20,11 +20,11 @@
                  (set! (.-x this) (.-x newP))
                  (set! (.-y this) (.-y newP))))))
 
-(defn create_actor[x y]
+(defn create_actor[app x y color]
   (def actor_graphics (new js/PIXI.Graphics))
   (-> actor_graphics
       (.lineStyle 0)
-      (.beginFill 0xFF00BB 0.25)
+      (.beginFill color 0.5)
       (.drawCircle x y 100)
       (.endFill))
 
@@ -51,22 +51,6 @@
   (def app (new js/PIXI.Application width, height, (clj->js {"antialias" true})))
   (.appendChild mount_elem (.-view app))
 
-  (create_actor 0 0)
-  (create_actor 50 50)
-  (create_actor 200 200))
-
-;
-;  (defn draw_actor[{g :actor_graphics f :fill ls :line_style x :x y :y r :r}]
-;    (-> g
-;        (.lineStyle (:lineWidth ls))
-;        (.beginFill (:color f) (:alpha f))
-;        (.drawCircle x y r)
-;        (.endFill)))
-;
-;  (draw_actor
-;    {:actor_graphics actor_graphics
-;     :fill           {:color 0xFF00BB :alpha 0.25}
-;     :line_style     {:lineWidth 0}
-;     :x              470
-;     :y              200
-;     :r              60}))
+  (create_actor app 0 0 0xFF00BB)
+  (create_actor app 50 50 0x227788)
+  (create_actor app 200 200 0x00FFAA))
