@@ -1,7 +1,28 @@
 (ns viz.graphics
+  (:require-macros [cljs.core.async.macros :refer [go]])
   (:require
     [reagent.core :as r]
     [cljs.core.async :refer [put! chan <! >! timeout close!]]))
+
+(defonce actors
+  (atom {
+          "pid1" (atom {:x 0 :y 0 :color 0xFF00BB})
+          "pid2" (atom {:x 200 :y 200 :color 0xFFFFBB})
+          "pid3" (atom {:x 400 :y 400 :color 0x0000BB})
+          }))
+
+(def EVENTCHANNEL (chan))
+
+(def EVENTS
+  {:update-actor-state (fn [{pid :pid state :state}]
+                         (swap! (get @actors pid) (fn[_] state)))
+   :new_running_actor  (fn [{pid "pid" name "name"}]
+                         (swap! actors assoc-in [pid] (atom {:x 500 :y 400 :color 0x41f447 :name name})))})
+(go
+  (while true
+         (let [[event-name event-data] (<! EVENTCHANNEL)]
+           ((event-name EVENTS) event-data))))
+
 
 (defn onDragStart[e]
   (this-as this
@@ -63,7 +84,7 @@
                  (set! (.-y actor_sprite) (:y new-state))
                  (set! (.-color actor_sprite) (:color new-state))))))
 
-(defn init[actors EVCHANNEL mount_elem width height]
+(defn init[mount_elem width height]
   (def app (new js/PIXI.Application width, height, (clj->js {"antialias" true})))
   (.appendChild mount_elem (.-view app))
 
@@ -79,7 +100,7 @@
   (defn add_all_actors_on_stage [actors]
     (doseq [actor actors]
       (let [[pid state]          actor]
-        (add_actor_on_stage app EVCHANNEL pid state))))
+        (add_actor_on_stage app EVENTCHANNEL pid state))))
 
   (add-watch actors :graphics
              (fn [key atom old-state new-state]
