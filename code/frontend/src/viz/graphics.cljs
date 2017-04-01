@@ -54,6 +54,15 @@
   (.stage.addChild app actor_sprite)
   actor_sprite)
 
+(defn add_actor_on_stage [app EVENTCHANNEL pid actor_state]
+  (let [{x :x y :y c :color} @actor_state
+        actor_sprite (create_actor app EVENTCHANNEL x y c pid)]
+    (add-watch actor_state pid
+               (fn[key atom old-state new-state]
+                 (set! (.-x actor_sprite) (:x new-state))
+                 (set! (.-y actor_sprite) (:y new-state))
+                 (set! (.-color actor_sprite) (:color new-state))))))
+
 (defn init[actors EVCHANNEL mount_elem width height]
   (def app (new js/PIXI.Application width, height, (clj->js {"antialias" true})))
   (.appendChild mount_elem (.-view app))
@@ -67,16 +76,13 @@
       (.endFill))
   (.stage.addChild app separator_line_left)
 
-  (doseq [actor @actors]
-    (let [[pid state]          actor
-          {x :x y :y c :color} @state]
-      (let [actor_sprite (create_actor app EVCHANNEL x y c pid)]
-        (add-watch state pid
-                   (fn[key atom old-state new-state]
-                     (set! (.-x actor_sprite) (:x new-state))
-                     (set! (.-y actor_sprite) (:y new-state))
-                     (set! (.-color actor_sprite) (:color new-state)))))))
+  (defn add_all_actors_on_stage [actors]
+    (doseq [actor actors]
+      (let [[pid state]          actor]
+        (add_actor_on_stage app EVCHANNEL pid state))))
+
+  (add-watch actors :graphics
+             (fn [key atom old-state new-state]
+               (add_all_actors_on_stage new-state)))
   app)
 
-(defn add_actor_on_stage [app EVENTCHANNEL x y c pid]
-  (create_actor app EVENTCHANNEL x y c pid))

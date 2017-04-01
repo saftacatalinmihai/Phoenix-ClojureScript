@@ -19,7 +19,9 @@
 
 (def EVENTS
   {:update-actor-state (fn [{pid :pid state :state}]
-                         (swap! (get @actors pid) (fn[_] state)))})
+                         (swap! (get @actors pid) (fn[_] state)))
+   :new_running_actor  (fn [{pid "pid" name "name"}]
+                        (swap! actors assoc-in [pid] (atom {:x 500 :y 400 :color 0x41f447 :name name})))})
 (go
   (while true
          (let [[event-name event-data] (<! EVENTCHANNEL)]
@@ -36,3 +38,10 @@
   EVENTCHANNEL
   (js/document.querySelector "#pixi-js")
   (-> js/window js/jQuery .width) (-> js/window js/jQuery .height)))
+
+(channel/join (fn [actor_types]
+                 (js/console.log actor_types)))
+
+(channel/push "new_actor" {:name "Actor2"} (fn [running_actor]
+                                             (println running_actor)
+                                             (put! EVENTCHANNEL [:new_running_actor running_actor])))
