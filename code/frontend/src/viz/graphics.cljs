@@ -43,60 +43,63 @@
              [:y]
              new-y))))
 
-(defn running-actor[app {x :x y :y color :color pid :pid}]
-  (let [running-actor-state (atom {:x x :y y :color color :pid pid})
-        actor_graphics      (new js/PIXI.Graphics)]
-    (-> actor_graphics
-        (.lineStyle 4 color 1)
-        (.beginFill color 0.6)
-        (.drawCircle x y 50)
-        (.endFill))
-    (set! (.-boundsPadding actor_graphics) 0)
+(defn circle-sprite[app {x :x y :y c :color}]
+  (let [graphics (-> (new js/PIXI.Graphics)
+                     (.lineStyle 5 c 1)
+                     (.beginFill c 0.6)
+                     (.drawCircle x y 50)
+                     (.endFill))]
+    (js/console.log graphics)
+    (set! (.-boundsPadding graphics) 0)
+    (let [sprite (new js/PIXI.Sprite (.generateTexture graphics))]
+      (set! (.-interactive sprite) true)
+      (set! (.-buttonMode sprite) true)
+      (.anchor.set sprite 0.5)
+      (set! (.-x sprite) x)
+      (set! (.-y sprite) y)
+      (set! (.-color sprite) c)
+      sprite)))
 
-    (let [actor_sprite (new js/PIXI.Sprite (.generateTexture actor_graphics))]
-      (set! (.-interactive actor_sprite) true)
-      (set! (.-buttonMode actor_sprite) true)
-      (.anchor.set actor_sprite 0.5)
-      (set! (.-x actor_sprite) x)
-      (set! (.-y actor_sprite) y)
-      (set! (.-color actor_sprite) color)
-      (-> actor_sprite
-          (.on "pointerdown" onDragStart)
-          (.on "pointerup" onDragEnd)
-          (.on "pointerupoutside" onDragEnd)
-          (.on "pointermove"
-               (fn[e]
-                 (this-as this
-                          (onDragMove this (fn[new-xy] (update-running-actor-xy-state running-actor-state new-xy)))))))
-      (.stage.addChild app actor_sprite)
-      running-actor-state)))
+(defn running-actor[app init-state]
+  (let [running-actor-state (atom init-state)
+        actor_sprite        (circle-sprite app
+                                           {:x     (:x init-state)
+                                            :y     (:y init-state)
+                                            :color (:color init-state)})]
+    (-> actor_sprite
+        (.on "pointerdown" onDragStart)
+        (.on "pointerup" onDragEnd)
+        (.on "pointerupoutside" onDragEnd)
+        (.on "pointermove"
+             (fn[e]
+               (this-as this
+                        (onDragMove this (fn[new-xy] (update-running-actor-xy-state running-actor-state new-xy)))))))
+    (.stage.addChild app actor_sprite)
+    running-actor-state))
 
 (defn init[mount_elem width height]
-  (def app (new js/PIXI.Application width, height, (clj->js {"antialias" true})))
-  (.appendChild mount_elem (.-view app))
+  (let [app (new js/PIXI.Application width, height, (clj->js {"antialias" true}))]
+    (.appendChild mount_elem (.-view app))
 
-  (def separator_line_left (new js/PIXI.Graphics))
-  (-> separator_line_left
-      (.beginFill 0)
-      (.lineStyle 5 0xf44242 0.7)
-      (.moveTo 150 0)
-      (.lineTo 150 height)
-      (.endFill))
-  (.stage.addChild app separator_line_left)
+    (let [separator_line_left (new js/PIXI.Graphics)]
+      (-> separator_line_left
+          (.beginFill 0)
+          (.lineStyle 10 0xf44242 0.7)
+          (.moveTo 150 0)
+          (.lineTo 150 height)
+          (.endFill))
+      (.stage.addChild app separator_line_left))
 
-  (doseq [[pid existing-state] (:running-actors @state)]
-    (swap! state assoc-in [:running-actors pid] (running-actor app @existing-state)))
+    (doseq [[pid existing-state] (:running-actors @state)]
+      (swap! state assoc-in [:running-actors pid] (running-actor app @existing-state)))
 
-  (def event-channel (chan))
+    (let [event-channel (chan)]
+      (let [handlers {:new_running_actor (fn [{pid "pid" name "name"}]
+                                           (swap! state assoc-in [:running-actors pid]
+                                                  (running-actor app {:pid pid :x 500 :y 400 :color 0x41f447 :type name})))}]
+        (go
+          (while true
+                 (let [[event-name event-data] (<! event-channel)]
+                   ((event-name handlers) event-data))))
 
-  (def handlers
-    {:new_running_actor (fn [{pid "pid" name "name"}]
-                          (swap! state assoc-in [:running-actors pid]
-                                 (running-actor app {:pid pid :x 500 :y 400 :color 0x41f447 :type name})))})
-  (go
-    (while true
-           (let [[event-name event-data] (<! event-channel)]
-             ((event-name handlers) event-data))))
-
-  event-channel)
-
+        event-channel))))
