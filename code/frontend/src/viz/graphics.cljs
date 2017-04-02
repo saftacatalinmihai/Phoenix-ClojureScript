@@ -49,7 +49,6 @@
                      (.beginFill c 0.6)
                      (.drawCircle x y 50)
                      (.endFill))]
-    (js/console.log graphics)
     (set! (.-boundsPadding graphics) 0)
     (let [sprite (new js/PIXI.Sprite (.generateTexture graphics))]
       (set! (.-interactive sprite) true)
