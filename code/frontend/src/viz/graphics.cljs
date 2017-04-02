@@ -4,25 +4,14 @@
     [reagent.core :as r]
     [cljs.core.async :refer [put! chan <! >! timeout close!]]))
 
-(defonce actors
-  (atom {
-          "pid1" (atom {:x 0 :y 0 :color 0xFF00BB})
-          "pid2" (atom {:x 200 :y 200 :color 0xFFFFBB})
-          "pid3" (atom {:x 400 :y 400 :color 0x0000BB})
-          }))
-
-(def EVENTCHANNEL (chan))
-
-(def EVENTS
-  {:update-actor-state (fn [{pid :pid state :state}]
-                         (swap! (get @actors pid) (fn[_] state)))
-   :new_running_actor  (fn [{pid "pid" name "name"}]
-                         (swap! actors assoc-in [pid] (atom {:x 500 :y 400 :color 0x41f447 :name name})))})
-(go
-  (while true
-         (let [[event-name event-data] (<! EVENTCHANNEL)]
-           ((event-name EVENTS) event-data))))
-
+(defonce state
+  (atom
+    {:actor-types    {"GenServer" {:type "GenServer" :x 50 :y 50 :color 0xFF00BB}
+                      "Actor1"    {:type "Actor1" :x 50 :y 100 :color 0xFFFFBB}
+                      "Actor2"    {:type "Actor2" :x 50 :y 150 :color 0x0000BB}}
+     :running-actors {"pid1" (atom {:pid "pid1" :x 100 :y 0 :color 0xFF00BB :type "GetServer"})
+                      "pid2" (atom {:pid "pid2" :x 200 :y 100 :color 0xFFFFBB :type "Actor1"})
+                      "pid3" (atom {:pid "pid3" :x 300 :y 200 :color 0x0000BB :type "Actor2"})}}))
 
 (defn onDragStart[e]
   (this-as this
@@ -37,52 +26,50 @@
              (set! (.-alpha this) 1)
              (set! (.-dragging this) false))))
 
-(defn onDragMove[e]
-  (this-as this
-           (if (.-dragging this)
-               (let [newP (.getLocalPosition (.-data this) (.-parent this))]
-                 (put! (.-eventChannel this)
-                       [:update-actor-state {:pid (.-pid this) :state {:x (.-x newP) :y (.-y newP) :color (.-color this)}}])))))
+(defn onDragMove[this on-pos-changed]
+  (if (.-dragging this)
+      (let [newP (.getLocalPosition (.-data this) (.-parent this))]
+        (set! (.-x this) (.-x newP))
+        (set! (.-y this) (.-y newP))
+        (on-pos-changed {:x (.-x newP) :y (.-y newP)}))))
 
-(defn create_actor[app x y color pid]
-  (def actor_graphics (new js/PIXI.Graphics))
-  (-> actor_graphics
-      (.lineStyle 4 color 1)
-      (.beginFill color 0.6)
-      (.drawCircle x y 50)
-      (.endFill))
+(defn update-running-actor-xy-state[state {new-x :x new-y :y}]
+  (swap! state
+         #(-> %
+           (assoc-in
+             [:x]
+             new-x)
+           (assoc-in
+             [:y]
+             new-y))))
 
-  (set! (.-boundsPadding actor_graphics) 0)
+(defn running-actor[app {x :x y :y color :color pid :pid}]
+  (let [running-actor-state (atom {:x x :y y :color color :pid pid})
+        actor_graphics      (new js/PIXI.Graphics)]
+    (-> actor_graphics
+        (.lineStyle 4 color 1)
+        (.beginFill color 0.6)
+        (.drawCircle x y 50)
+        (.endFill))
+    (set! (.-boundsPadding actor_graphics) 0)
 
-  (def actor_sprite (new js/PIXI.Sprite (.generateTexture actor_graphics)))
-
-  (set! (.-interactive actor_sprite) true)
-  (set! (.-buttonMode actor_sprite) true)
-  (.anchor.set actor_sprite 0.5)
-
-  (set! (.-x actor_sprite) x)
-  (set! (.-y actor_sprite) y)
-  (set! (.-color actor_sprite) color)
-  (set! (.-eventChannel actor_sprite) EVENTCHANNEL)
-  (set! (.-pid actor_sprite) pid)
-
-  (-> actor_sprite
-      (.on "pointerdown" onDragStart)
-      (.on "pointerup" onDragEnd)
-      (.on "pointerupoutside" onDragEnd)
-      (.on "pointermove" onDragMove))
-
-  (.stage.addChild app actor_sprite)
-  actor_sprite)
-
-(defn add_actor_on_stage [app pid actor_state]
-  (let [{x :x y :y c :color} @actor_state
-        actor_sprite (create_actor app x y c pid)]
-    (add-watch actor_state pid
-               (fn[key atom old-state new-state]
-                 (set! (.-x actor_sprite) (:x new-state))
-                 (set! (.-y actor_sprite) (:y new-state))
-                 (set! (.-color actor_sprite) (:color new-state))))))
+    (let [actor_sprite (new js/PIXI.Sprite (.generateTexture actor_graphics))]
+      (set! (.-interactive actor_sprite) true)
+      (set! (.-buttonMode actor_sprite) true)
+      (.anchor.set actor_sprite 0.5)
+      (set! (.-x actor_sprite) x)
+      (set! (.-y actor_sprite) y)
+      (set! (.-color actor_sprite) color)
+      (-> actor_sprite
+          (.on "pointerdown" onDragStart)
+          (.on "pointerup" onDragEnd)
+          (.on "pointerupoutside" onDragEnd)
+          (.on "pointermove"
+               (fn[e]
+                 (this-as this
+                          (onDragMove this (fn[new-xy] (update-running-actor-xy-state running-actor-state new-xy)))))))
+      (.stage.addChild app actor_sprite)
+      running-actor-state)))
 
 (defn init[mount_elem width height]
   (def app (new js/PIXI.Application width, height, (clj->js {"antialias" true})))
@@ -97,13 +84,19 @@
       (.endFill))
   (.stage.addChild app separator_line_left)
 
-  (defn add_all_actors_on_stage [actors]
-    (doseq [actor actors]
-      (let [[pid state]          actor]
-        (add_actor_on_stage app pid state))))
+  (doseq [[pid existing-state] (:running-actors @state)]
+    (swap! state assoc-in [:running-actors pid] (running-actor app @existing-state)))
 
-  (add-watch actors :graphics
-             (fn [key atom old-state new-state]
-               (add_all_actors_on_stage new-state)))
-  app)
+  (def event-channel (chan))
+
+  (def handlers
+    {:new_running_actor (fn [{pid "pid" name "name"}]
+                          (swap! state assoc-in [:running-actors pid]
+                                 (running-actor app {:pid pid :x 500 :y 400 :color 0x41f447 :type name})))})
+  (go
+    (while true
+           (let [[event-name event-data] (<! event-channel)]
+             ((event-name handlers) event-data))))
+
+  event-channel)
 

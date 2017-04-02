@@ -14,17 +14,17 @@
     (push msg_type msg_body
                   (fn[resp]
                     (let [resp_clj (js->clj resp)]
-                      (println "Received", resp_clj)))))
+                      (js/console.log "Received", resp_clj)))))
   ([msg_type msg_body on_ok]
     (push msg_type msg_body on_ok
                   (fn[resp]
                     (let [resp_clj (js->clj resp)]
-                      (println "Received error", resp_clj)))))
+                      (js/console.log "Received error", resp_clj)))))
   ([msg_type msg_body on_ok on_error]
     (push msg_type msg_body on_ok on_error
                   (fn[resp]
                     (let [resp_clj (js->clj resp)]
-                      (println "Received Timeout", resp_clj)))))
+                      (js/console.log "Received Timeout", resp_clj)))))
   ([msg_type msg_body on_ok on_error on_timeout]
     (let [pushEvent (.push channel msg_type (clj->js msg_body))]
       (-> pushEvent
@@ -37,9 +37,9 @@
   (.receive joinedChannel "ok"
             (fn[resp]
               (do
-                (println "Joined successfully")
+                (js/console.log "Joined successfully")
                 (push "get_actors", {} callback))))
 
-  (.receive joinedChannel "error" (fn[resp] (println "Unable to join", resp)))
+  (.receive joinedChannel "error" (fn[resp] (js/console.log "Unable to join", resp)))
   )
 

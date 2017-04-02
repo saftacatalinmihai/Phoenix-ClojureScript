@@ -14,13 +14,16 @@
 (r/render [pixi]
   (js/document.querySelector "#pixi-mount"))
 
-(graphics/init
-  (js/document.querySelector "#pixi-js")
-  (-> js/window js/jQuery .width) (-> js/window js/jQuery .height))
+(def graphics-event-chan
+  (graphics/init
+    (js/document.querySelector "#pixi-js")
+    (-> js/window js/jQuery .width) (-> js/window js/jQuery .height)))
 
-(channel/join (fn [actor_types]
-                 (js/console.log actor_types)))
+(channel/join
+  (fn [actor_types]
+    (js/console.log actor_types)))
 
-(channel/push "new_actor" {:name "Actor2"} (fn [running_actor]
-                                             (println running_actor)
-                                             (put! graphics/EVENTCHANNEL [:new_running_actor running_actor])))
+(channel/push "new_actor" {:name "Actor2"}
+  (fn [running_actor]
+    (js.console.log running_actor)
+    (put! graphics-event-chan [:new_running_actor running_actor])))
