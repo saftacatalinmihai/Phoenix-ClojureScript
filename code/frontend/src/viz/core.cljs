@@ -14,16 +14,33 @@
 (r/render [pixi]
   (js/document.querySelector "#pixi-mount"))
 
+(def core-chan (chan))
+
 (def graphics-event-chan
   (graphics/init
+    core-chan
     (js/document.querySelector "#pixi-js")
     (-> js/window js/jQuery .width) (-> js/window js/jQuery .height)))
 
-(channel/join
-  (fn [actor_types]
-    (js/console.log actor_types)))
+(def handlers
+  {:start-new-actor (fn[new-actor]
+                      (channel/push "new_actor" {:name (:type new-actor)}
+                                    (fn [running_actor]
+                                      (println new-actor, running_actor)
+                                      (put! graphics-event-chan [:new_running_actor [running_actor new-actor]]))))})
 
-(channel/push "new_actor" {:name "Actor2"}
-  (fn [running_actor]
-    (js.console.log running_actor)
-    (put! graphics-event-chan [:new_running_actor running_actor])))
+(go
+  (while true
+         (let [[event-name event-data] (<! core-chan)]
+           (js/console.log (pr-str event-name event-data))
+           ((event-name handlers) event-data))))
+
+(defonce joined-chan (channel/join
+  (fn [actor_types]
+    (js/console.log (pr-str actor_types))
+    (put! graphics-event-chan [:set_actor_types (get actor_types "actors")]))))
+
+;(channel/push "new_actor" {:name "Actor5"}
+;  (fn [running_actor]
+;    (js.console.log running_actor)
+;    (put! graphics-event-chan [:new_running_actor running_actor])))
