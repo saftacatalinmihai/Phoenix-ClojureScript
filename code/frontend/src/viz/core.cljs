@@ -24,23 +24,16 @@
 
 (def handlers
   {:start-new-actor (fn[new-actor]
-                      (channel/push "new_actor" {:name (:type new-actor)}
+                      (channel/push "start_actor" {:type (:type new-actor)}
                                     (fn [running_actor]
-                                      (println new-actor, running_actor)
                                       (put! graphics-event-chan [:new_running_actor [running_actor new-actor]]))))})
-
 (go
   (while true
          (let [[event-name event-data] (<! core-chan)]
            (js/console.log (pr-str event-name event-data))
            ((event-name handlers) event-data))))
 
-(defonce joined-chan (channel/join
-  (fn [actor_types]
-    (js/console.log (pr-str actor_types))
-    (put! graphics-event-chan [:set_actor_types (get actor_types "actors")]))))
-
-;(channel/push "new_actor" {:name "Actor5"}
-;  (fn [running_actor]
-;    (js.console.log running_actor)
-;    (put! graphics-event-chan [:new_running_actor running_actor])))
+(defonce joined-chan
+  (channel/join
+    (fn [actor_types]
+      (put! graphics-event-chan [:set_actor_types (get actor_types "actors")]))))

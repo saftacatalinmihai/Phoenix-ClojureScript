@@ -20,6 +20,14 @@ defmodule Backend.RoomChannel do
         {:reply, {:ok, %{:actors => actor_modules}}, socket}
     end
 
+    def handle_in("start_actor", %{"type" => name}, socket) do
+        IO.puts "start actor received"
+        case :"Elixir.#{name}".start_link do
+            {:ok, pid} -> {:reply, {:ok, %{:name => name, :pid => to_string(:erlang.pid_to_list(pid))}}, socket}
+            _ ->          {:reply, {:error, %{:reason => "Unable to start actor type: #{name}"}}, socket}
+        end
+    end
+
     def handle_in("new_actor", %{"name" => name}, socket) do
         IO.puts "new actor received"
 

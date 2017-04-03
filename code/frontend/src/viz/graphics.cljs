@@ -73,7 +73,10 @@
                                                 :y     (:y init-state)
                                                 :color (:color init-state)})
                                 (fn[new-xy] (update-xy-state running-actor-state new-xy)))]
-    (let [pid-text (js/PIXI.Text. (:pid @running-actor-state))]
+    (let [pid-text (js/PIXI.Text. (:pid @running-actor-state)
+                                (clj->js
+                                  {:fill            "white"
+                                   :fontSize        16}))]
       (set! (.-anchor.x pid-text) 0.5)
       (set! (.-anchor.y pid-text) 0.5)
       (.addChild running-actor-sprite pid-text))
@@ -99,8 +102,7 @@
                                  (set! (.-y this) (.-initialY this))
                                  (update-xy-state actor-type-state {:x (.-x this) :y (.-y this)})
                                  (set! (.-alpha this) 1)
-                                 (set! (.-dragging this) false)
-                                 )))]
+                                 (set! (.-dragging this) false))))]
       (-> actor-type-sprite
           (.on "pointerdown"
                (fn [e]
