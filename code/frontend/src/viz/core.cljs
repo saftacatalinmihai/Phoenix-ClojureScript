@@ -36,7 +36,7 @@
   (graphics/init
     core-chan
     (js/document.querySelector "#pixi-js")
-    (-> js/window js/jQuery .width) (-> js/window js/jQuery .height)))
+    (- (-> js/window js/jQuery .width) 10) (- (-> js/window js/jQuery .height) 10)))
 
 (def handlers
   {:start-new-actor (fn[new-actor]

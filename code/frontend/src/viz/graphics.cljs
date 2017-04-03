@@ -151,7 +151,7 @@
                                              (map-indexed
                                                (fn [idx type]
                                                  (swap! state assoc-in [:actor-types type]
-                                                        (actor-type app {:type type :x 100 :y (+ 50 (* 120 idx)) :color (rand-color)})))
+                                                        (actor-type app {:type type :x 60 :y (+ 60 (* 120 idx)) :color (rand-color)})))
                                                actor_types)))}]
         (go
           (while true
