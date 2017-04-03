@@ -79,6 +79,22 @@
       (set! (.-anchor.x pid-text) 0.5)
       (set! (.-anchor.y pid-text) 0.5)
       (.addChild running-actor-sprite pid-text))
+
+    (let [c (:color init-state)
+          x (:x init-state)
+          y (:y init-state)
+           graphics (-> (js/PIXI.Graphics.)
+                       (.lineStyle 5 c 1)
+                       (.beginFill c 0.6)
+                       (.drawCircle x y 15)
+                       (.endFill))]
+      (set! (.-boundsPadding graphics) 0)
+      (let [sprite (js/PIXI.Sprite. (.generateTexture graphics))]
+        (set! (.-interactive sprite) true)
+        (set! (.-buttonMode sprite) true)
+        sprite
+      (.addChild running-actor-sprite sprite)))
+
     (.stage.addChild app running-actor-sprite)
     running-actor-state))
 
@@ -88,7 +104,9 @@
                                          {:x     (:x init-state)
                                           :y     (:y init-state)
                                           :color (:color init-state)})]
-    (let [text (js/PIXI.Text. (:type init-state))]
+    (let [text (js/PIXI.Text. (:type init-state) (clj->js
+                                                   {:fill            "white"
+                                                    :fontSize        14}))]
       (set! (.-anchor.x text) 0.5)
       (set! (.-anchor.y text) 0.5)
       (.addChild actor-type-sprite text))
