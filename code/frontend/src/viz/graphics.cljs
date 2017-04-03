@@ -43,7 +43,6 @@
     (-> sprite
         (.on "pointerdown" onDragStart)
         (.on "pointerup" onDragEnd)
-        (.on "pointerupoutside" onDragEnd)
         (.on "pointermove"
              (fn[e]
                (this-as this
@@ -116,7 +115,6 @@
                             (set! (.-alpha this) 0.5)
                             (set! (.-dragging this) true)))))
           (.on "pointerup" onDragEnd)
-          (.on "pointerupoutside" onDragEnd)
           (.on "pointermove"
                (fn[e]
                  (this-as this

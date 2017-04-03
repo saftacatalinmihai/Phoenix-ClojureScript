@@ -9,8 +9,10 @@
     [cljs.core.async :refer [put! chan <!]]))
 
 (defonce state (atom {:code-in-editor ""}))
+
 (defn set-actor-in-editor[actor_type]
-  swap! state assoc-in [:code-in-editor] actor_type)
+  (swap! state assoc-in [:code-in-editor] actor_type))
+
 (defn get-actor-in-editor[] (:code-in-editor @state))
 
 (defn pixi []
@@ -18,6 +20,13 @@
 
 (r/render [pixi]
   (js/document.querySelector "#pixi-mount"))
+
+(.sideNav (js/jQuery ".button-collapse")
+  (clj->js
+    {:menuWidth (/ (-> js/window js/jQuery .width) 2)
+     :edge      'right'}))
+
+(.modal (js/jQuery ".modal"))
 
 (def editor (js/ace.edit "editor"))
 
@@ -34,12 +43,13 @@
                       (channel/push "start_actor" {:type (:type new-actor)}
                                     (fn [running_actor]
                                       (put! graphics-event-chan [:new_running_actor [running_actor new-actor]]))))
-   :show-code (fn [actor-type]
-                (channel/push "get_actor_code" {:name actor-type}
-                              (fn [resp]
-                                (set-actor-in-editor actor-type)
-                                (.setValue editor (get resp "code"))))
-                )})
+   :show-code       (fn [actor-type]
+                      (channel/push "get_actor_code" {:name actor-type}
+                                    (fn [resp]
+                                      (set-actor-in-editor actor-type)
+                                      (.setValue editor (get resp "code"))
+                                      (.sideNav (js/jQuery ".button-collapse") "show"))))})
+
 (go
   (while true
          (let [[event-name event-data] (<! core-chan)]
@@ -52,18 +62,22 @@
 
 
 (defn update_actor_code![actor_type]
-    (channel/push "update_actor"
-                  {:name actor_type
-                   :actor_code (.getValue editor)}))
+  (js/console.log (pr-str actor_type))
+  (channel/push "update_actor" {:name actor_type :actor_code (.getValue editor)}
+                #(js/Materialize.toast "Code saved" 4000 "green")
+                #(do
+                  (set! (.-innerHTML (js/document.querySelector "#error-modal")) %)
+                  (.modal (js/jQuery "#modal1") "open")
+                  )))
 
 (-> editor
   ((fn[e] (.setTheme e "ace/theme/monokai") e))
   ((fn[e]
-     (.addCommand (.-commands e) (clj->js {
-                                            :name "save"
-                                            :bindKey {:win "Ctrl-S" :mac "Cmd-S"}
-                                            :exec (fn[] (update_actor_code! (get-actor-in-editor)))
-                                            }))
+     (.addCommand (.-commands e)
+                  (clj->js
+                    {:name    "save"
+                     :bindKey {:win "Ctrl-S" :mac "Cmd-S"}
+                     :exec    (fn[] (update_actor_code! (get-actor-in-editor)))}))
      e))
   .getSession
   (.setMode "ace/mode/elixir"))
