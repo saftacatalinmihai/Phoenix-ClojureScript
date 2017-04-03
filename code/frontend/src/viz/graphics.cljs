@@ -97,7 +97,9 @@
     (let [onDragEnd (fn[]
                       (this-as this
                                (do
-                                 (put! (:core-chan @state) [:start-new-actor @actor-type-state])
+                                 (if-not (and (= (.-x this) (.-initialX this)) (= (.-y this) (.-initialY this)))
+                                         (put! (:core-chan @state) [:start-new-actor @actor-type-state])
+                                         (put! (:core-chan @state) [:show-code (:type @actor-type-state)]))
                                  (set! (.-x this) (.-initialX this))
                                  (set! (.-y this) (.-initialY this))
                                  (update-xy-state actor-type-state {:x (.-x this) :y (.-y this)})
@@ -144,7 +146,6 @@
 
     (let [event-channel (chan)]
       (let [handlers {:new_running_actor (fn [[{pid "pid" name "name"} {x :x y :y c :color}]]
-                                           (println pid, name, x, y, c)
                                            (swap! state assoc-in [:running-actors pid]
                                                   (running-actor app {:pid pid :x x :y y :color c :type name})))
                       :set_actor_types   (fn [actor_types]

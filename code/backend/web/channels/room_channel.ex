@@ -21,7 +21,7 @@ defmodule Backend.RoomChannel do
     end
 
     def handle_in("start_actor", %{"type" => name}, socket) do
-        IO.puts "start actor received"
+        IO.puts "start actor received #{name}"
         case :"Elixir.#{name}".start_link do
             {:ok, pid} -> {:reply, {:ok, %{:name => name, :pid => to_string(:erlang.pid_to_list(pid))}}, socket}
             _ ->          {:reply, {:error, %{:reason => "Unable to start actor type: #{name}"}}, socket}
@@ -29,7 +29,7 @@ defmodule Backend.RoomChannel do
     end
 
     def handle_in("new_actor", %{"name" => name}, socket) do
-        IO.puts "new actor received"
+        IO.puts "new actor received #{name}"
 
         case File.read("code/template/actor.ex") do
           {:ok, body} ->
@@ -45,7 +45,7 @@ defmodule Backend.RoomChannel do
     end
 
     def handle_in("update_actor", %{"name" => name, "actor_code" => code }, socket) do
-      IO.puts "update actor received"
+      IO.puts "update actor received #{name}"
 
       {:ok, file} = File.open "code/#{name}.ex", [:write]
       IO.binwrite file, code
@@ -60,6 +60,7 @@ defmodule Backend.RoomChannel do
     end
 
     def handle_in("get_actor_code", %{"name" => name}, socket) do
+        IO.puts "getting actor code #{name}"
         case File.read("code/#{name}.ex") do
           {:ok, body} ->
             {:reply, {:ok, %{:code => body}}, socket}
