@@ -62,13 +62,13 @@
 
 
 (defn update_actor_code![actor_type]
-  (js/console.log (pr-str actor_type))
   (channel/push "update_actor" {:name actor_type :actor_code (.getValue editor)}
-                #(js/Materialize.toast "Code saved" 4000 "green")
+                #(do
+                  (.modal (js/jQuery "#modal1") "close")
+                  (js/Materialize.toast "Code saved" 4000 "green"))
                 #(do
                   (set! (.-innerHTML (js/document.querySelector "#error-modal")) %)
-                  (.modal (js/jQuery "#modal1") "open")
-                  )))
+                  (.modal (js/jQuery "#modal1") "open"))))
 
 (-> editor
   ((fn[e] (.setTheme e "ace/theme/monokai") e))
