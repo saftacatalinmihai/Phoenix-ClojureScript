@@ -13,7 +13,7 @@ defmodule Backend do
       # Start the endpoint when the application starts
       supervisor(Backend.Endpoint, []),
       # Start your own worker by calling: Backend.Worker.start_link(arg1, arg2, arg3)
-      # worker(Backend.Worker, [arg1, arg2, arg3]),
+      worker(Backend.CodeServer, []),
     ]
 
     # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html

@@ -80,21 +80,6 @@
       (set! (.-anchor.y pid-text) 0.5)
       (.addChild running-actor-sprite pid-text))
 
-    (let [c (:color init-state)
-          x (:x init-state)
-          y (:y init-state)
-           graphics (-> (js/PIXI.Graphics.)
-                       (.lineStyle 5 c 1)
-                       (.beginFill c 0.6)
-                       (.drawCircle x y 15)
-                       (.endFill))]
-      (set! (.-boundsPadding graphics) 0)
-      (let [sprite (js/PIXI.Sprite. (.generateTexture graphics))]
-        (set! (.-interactive sprite) true)
-        (set! (.-buttonMode sprite) true)
-        sprite
-      (.addChild running-actor-sprite sprite)))
-
     (.stage.addChild app running-actor-sprite)
     running-actor-state))
 

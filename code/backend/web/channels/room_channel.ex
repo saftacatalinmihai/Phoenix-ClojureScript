@@ -10,13 +10,7 @@ defmodule Backend.RoomChannel do
     end
 
     def handle_in("get_actors", attrs, socket) do
-        actor_modules =
-            Path.wildcard("code/*.ex") |>
-            Enum.map(fn file ->
-                String.replace_prefix(file, "code/", "") |>
-                String.replace_suffix(".ex", "")
-            end)
-
+        actor_modules = Backend.CodeServer.getActorTypes()
         {:reply, {:ok, %{:actors => actor_modules}}, socket}
     end
 
