@@ -19,7 +19,7 @@ defmodule Actor1 do
     end
 
     def handle_call("ping", _from, state) do
-        {:reply, "pong", state}
+        {:reply, "pong2", state}
     end
 
     def handle_cast("ping", state) do

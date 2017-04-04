@@ -18,3 +18,8 @@ Start clojure figwheel server
 ```     
 ./dcfigwheel
 ```
+
+## Usage
+- Drag an actor on canvas to start a process with that actor
+- Click on an actor type (on the left) to open it's code
+- Ctrl+S to save code. All running actors will have the new code (hot code load)
