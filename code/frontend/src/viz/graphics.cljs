@@ -96,8 +96,7 @@
                             (set! (.-data this) (.-data e))
                             (set! (.-alpha this) 0.5)
                             (set! (.-dragging this) true)))))
-          (.on "pointerup" onDragEnd)
-          ))
+          (.on "pointerup" onDragEnd)))
     actor-type-sprite))
 
 (defn component[sprite-constructor state-atom]
@@ -142,21 +141,6 @@
            (.stage.addChild app)
            (draggable)))
 
-    (dorun
-      (map-indexed
-        (fn [idx [type type-state]]
-;          (swap! state assoc-in [:actor-types type] (atom {:type type :x 60 :y (+ 60 (* 120 idx)) :color (rand-color)}))
-          (component actor-type (get-in @state [:actor-types type]))
-          )
-        (:actor-types @state)))
-
-    (dorun
-      (fn [pid pid-state]
-;          (swap! state assoc-in [:running-actors pid] (atom {:pid pid :x x :y y :color c :type name}))
-          (component running-actor (get-in @state [:running-actors pid]))
-          )
-        (:running-actors @state))
-
     (doseq [[pid running_actor_state] (:running-actors @state)]
       (->> (component running-actor running_actor_state)
            (.stage.addChild app)
@@ -169,16 +153,19 @@
 
     (let [event-channel (chan)]
       (let [handlers {:new_running_actor (fn [[{pid "pid" name "name"} {x :x y :y c :color}]]
-                                           (swap! state assoc-in [:running-actors pid] (atom {:pid pid :x x :y y :color c :type name})
-                                           (component running-actor (get-in @state [:running-actors pid])
-                                                      )))
+                                           (swap! state assoc-in [:running-actors pid] (atom {:pid pid :x x :y y :color c :type name}))
+                                           (->> (component running-actor (get-in @state [:running-actors pid]))
+                                                (.stage.addChild app)
+                                                (draggable)))
                       :set_actor_types   (fn [actor_types]
                                            (dorun
                                              (map-indexed
                                                (fn [idx type]
-                                                 (swap! state assoc-in [:actor-types type] (atom {:type type :x 60 :y (+ 60 (* 120 idx)) :color (rand-color)}))
-                                                 (component actor-type (get-in @state [:actor-types type]))
-                                                 )
+                                                 (swap! state assoc-in [:actor-types type]
+                                                        (atom {:type type :x 60 :y (+ 60 (* 120 idx)) :color (rand-color)}))
+                                                 (->> (component actor-type (get-in @state [:actor-types type]))
+                                                      (.stage.addChild app)
+                                                      (draggable)))
                                                actor_types)))}]
         (go
           (while true
