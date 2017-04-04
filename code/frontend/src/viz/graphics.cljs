@@ -4,8 +4,11 @@
     [reagent.core :as r]
     [cljs.core.async :refer [put! chan <! >! timeout close!]]))
 
+(defn rand-color[]
+  (rand-int 0xFFFFFF))
+
 (defonce state
-  (atom {}))
+  (atom {:component (atom {:x 200 :y 200 :color (rand-color)})}))
 
 (defn onDragStart[e]
   (this-as this
@@ -14,41 +17,26 @@
              (set! (.-alpha this) 0.5)
              (set! (.-dragging this) true))))
 
-(defn onDragEnd[]
+(defn onDragEnd[e]
   (this-as this
            (do
              (set! (.-alpha this) 1)
              (set! (.-dragging this) false))))
 
-(defn onDragMove[this on-pos-changed]
-  (if (.-dragging this)
-      (let [newP (.getLocalPosition (.-data this) (.-parent this))]
-        (set! (.-x this) (.-x newP))
-        (set! (.-y this) (.-y newP))
-        (on-pos-changed {:x (.-x newP) :y (.-y newP)}))))
+(defn onDragMove[e]
+  (this-as this
+           (if (.-dragging this)
+               (let [newP (.getLocalPosition (.-data this) (.-parent this))]
+                 (put! (.-eventChan this) [:update-xy {:x (.-x newP) :y (.-y newP)}])))))
 
-(defn update-xy-state[state {new-x :x new-y :y}]
-  (swap! state
-         #(-> %
-           (assoc-in
-             [:x]
-             new-x)
-           (assoc-in
-             [:y]
-             new-y))))
+(defn onDragMove2[e]
+  (this-as this
+           (if (.-dragging this)
+               (let [newP (.getLocalPosition (.-data this) (.-parent this))]
+                 (set! (.-x this) (.-x newP))
+                 (set! (.-y this) (.-y newP))))))
 
-(defn dragable-sprite
-  ([sprite] (dragable-sprite sprite identity))
-  ([sprite onMove]
-    (-> sprite
-        (.on "pointerdown" onDragStart)
-        (.on "pointerup" onDragEnd)
-        (.on "pointermove"
-             (fn[e]
-               (this-as this
-                        (onDragMove this onMove)))))))
-
-(defn circle-sprite[app {x :x y :y c :color}]
+(defn circle-sprite[{x :x y :y c :color}]
   (let [graphics (-> (js/PIXI.Graphics.)
                      (.lineStyle 5 c 1)
                      (.beginFill c 0.6)
@@ -64,34 +52,26 @@
       (set! (.-color sprite) c)
       sprite)))
 
-(defn running-actor[app init-state]
-  (let [running-actor-state   (atom init-state)
-        running-actor-sprite  (dragable-sprite
-                                (circle-sprite app
-                                               {:x     (:x init-state)
-                                                :y     (:y init-state)
-                                                :color (:color init-state)})
-                                (fn[new-xy] (update-xy-state running-actor-state new-xy)))]
-    (let [pid-text (js/PIXI.Text. (:pid @running-actor-state)
+(defn running-actor[init-state]
+  (let [running-actor-sprite  (circle-sprite
+                                {:x     (:x init-state)
+                                 :y     (:y init-state)
+                                 :color (:color init-state)})]
+    (let [pid-text (js/PIXI.Text. (:pid init-state)
                                 (clj->js
-                                  {:fill            "white"
-                                   :fontSize        16}))]
+                                  {:fill "white" :fontSize 16}))]
       (set! (.-anchor.x pid-text) 0.5)
-      (set! (.-anchor.y pid-text) 0.5)
-      (.addChild running-actor-sprite pid-text))
+      (set! (.-anchor.y pid-text) 0.5))
+    running-actor-sprite))
 
-    (.stage.addChild app running-actor-sprite)
-    running-actor-state))
-
-(defn actor-type[app init-state]
-  (let [actor-type-state  (atom init-state)
-        actor-type-sprite (circle-sprite app
-                                         {:x     (:x init-state)
-                                          :y     (:y init-state)
-                                          :color (:color init-state)})]
-    (let [text (js/PIXI.Text. (:type init-state) (clj->js
-                                                   {:fill            "white"
-                                                    :fontSize        14}))]
+(defn actor-type[init-state]
+  (let [actor-type-sprite (circle-sprite
+                            {:x     (:x init-state)
+                             :y     (:y init-state)
+                             :color (:color init-state)})]
+    (let [text (js/PIXI.Text. (:type init-state)
+                            (clj->js
+                              {:fill "white" :fontSize 14}))]
       (set! (.-anchor.x text) 0.5)
       (set! (.-anchor.y text) 0.5)
       (.addChild actor-type-sprite text))
@@ -100,11 +80,10 @@
                       (this-as this
                                (do
                                  (if-not (and (= (.-x this) (.-initialX this)) (= (.-y this) (.-initialY this)))
-                                         (put! (:core-chan @state) [:start-new-actor @actor-type-state])
-                                         (put! (:core-chan @state) [:show-code (:type @actor-type-state)]))
+                                         (put! (:core-chan @state) [:start-new-actor init-state])
+                                         (put! (:core-chan @state) [:show-code (:type init-state)]))
                                  (set! (.-x this) (.-initialX this))
                                  (set! (.-y this) (.-initialY this))
-                                 (update-xy-state actor-type-state {:x (.-x this) :y (.-y this)})
                                  (set! (.-alpha this) 1)
                                  (set! (.-dragging this) false))))]
       (-> actor-type-sprite
@@ -118,15 +97,39 @@
                             (set! (.-alpha this) 0.5)
                             (set! (.-dragging this) true)))))
           (.on "pointerup" onDragEnd)
-          (.on "pointermove"
-               (fn[e]
-                 (this-as this
-                          (onDragMove this (fn[new-xy] (update-xy-state actor-type-state new-xy))))))))
-    (.stage.addChild app actor-type-sprite)
-    actor-type-state))
+          ))
+    actor-type-sprite))
 
-(defn rand-color[]
-  (rand-int 0xFFFFFF))
+(defn component[sprite-constructor state-atom]
+  (let [circle     (sprite-constructor @state-atom)
+        event-chan (chan)
+        handlers   {:update-xy (fn[{x :x y :y}]
+                                 (swap! state-atom
+                                        #(-> %
+                                          (assoc-in
+                                            [:x]
+                                            x)
+                                          (assoc-in
+                                            [:y]
+                                            y))))}]
+    (set! (.-state circle) state-atom)
+    (set! (.-eventChan circle) event-chan)
+    (set! (.-eventHandlers circle) handlers)
+    (add-watch state-atom :component
+               (fn [key atom old-state {x :x y :y color :color}]
+                 (set! (.-x circle) x)
+                 (set! (.-y circle) y)
+                 (set! (.-color circle) color)))
+    (go
+      (while true
+             (let [[event-name event-data] (<! event-chan)]
+               ((event-name handlers) event-data))))
+    circle))
+
+(defn draggable[component]
+  (.on component "pointerdown" onDragStart)
+  (.on component "pointerup" onDragEnd)
+  (.on component "pointermove" onDragMove))
 
 (defn init[core-chan mount_elem width height]
   (js/console.log "Existing state:", (pr-str state))
@@ -134,27 +137,48 @@
   (let [app (js/PIXI.Application. width, height, (clj->js {"antialias" true}))]
     (.appendChild mount_elem (.-view app))
 
+    (let [c (component circle-sprite (:component @state))]
+      (->> c
+           (.stage.addChild app)
+           (draggable)))
+
     (dorun
       (map-indexed
         (fn [idx [type type-state]]
-          (swap! state assoc-in [:actor-types type]
-                 (actor-type app
-                             {:type type :x (:x @type-state) :y (:y @type-state) :color (:color @type-state)})))
+;          (swap! state assoc-in [:actor-types type] (atom {:type type :x 60 :y (+ 60 (* 120 idx)) :color (rand-color)}))
+          (component actor-type (get-in @state [:actor-types type]))
+          )
         (:actor-types @state)))
 
-    (doseq [[pid existing-state] (:running-actors @state)]
-      (swap! state assoc-in [:running-actors pid] (running-actor app @existing-state)))
+    (dorun
+      (fn [pid pid-state]
+;          (swap! state assoc-in [:running-actors pid] (atom {:pid pid :x x :y y :color c :type name}))
+          (component running-actor (get-in @state [:running-actors pid]))
+          )
+        (:running-actors @state))
+
+    (doseq [[pid running_actor_state] (:running-actors @state)]
+      (->> (component running-actor running_actor_state)
+           (.stage.addChild app)
+           (draggable)))
+
+    (doseq [[type actor-type-state] (:actor-types @state)]
+      (->> (component actor-type actor-type-state)
+           (.stage.addChild app)
+           (draggable)))
 
     (let [event-channel (chan)]
       (let [handlers {:new_running_actor (fn [[{pid "pid" name "name"} {x :x y :y c :color}]]
-                                           (swap! state assoc-in [:running-actors pid]
-                                                  (running-actor app {:pid pid :x x :y y :color c :type name})))
+                                           (swap! state assoc-in [:running-actors pid] (atom {:pid pid :x x :y y :color c :type name})
+                                           (component running-actor (get-in @state [:running-actors pid])
+                                                      )))
                       :set_actor_types   (fn [actor_types]
                                            (dorun
                                              (map-indexed
                                                (fn [idx type]
-                                                 (swap! state assoc-in [:actor-types type]
-                                                        (actor-type app {:type type :x 60 :y (+ 60 (* 120 idx)) :color (rand-color)})))
+                                                 (swap! state assoc-in [:actor-types type] (atom {:type type :x 60 :y (+ 60 (* 120 idx)) :color (rand-color)}))
+                                                 (component actor-type (get-in @state [:actor-types type]))
+                                                 )
                                                actor_types)))}]
         (go
           (while true
