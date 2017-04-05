@@ -48,7 +48,9 @@
                                     (fn [resp]
                                       (set-actor-in-editor actor-type)
                                       (.setValue editor (get resp "code"))
-                                      (.sideNav (js/jQuery ".button-collapse") "show"))))})
+                                      (.sideNav (js/jQuery ".button-collapse") "show"))))
+   
+})
 
 (go
   (while true

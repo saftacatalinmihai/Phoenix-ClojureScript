@@ -30,11 +30,22 @@
                (put! (.-eventChan this) [:update-xy {:x (.-x newP) :y (.-y newP)}])))))
 
 (defn draggable[component]
-  (.on component "pointerdown" onDragStart)
-  (.on component "pointerup" onDragEnd)
-  (.on component "pointermove" onDragMove)
-  component
-)
+  (-> component
+      (.on "pointerdown" onDragStart)
+      (.on "pointerup" onDragEnd)
+      (.on "pointermove" onDragMove)))
+
+(defn clickable [component cb]
+  (-> component
+      (.on "pointerdown" (fn [e]
+                           (this-as this
+                                    (do
+                                      (set! (.-initialX this) (.-x this))
+                                      (set! (.-initialY this) (.-y this))))))
+      (.on "pointerup" (fn[e]
+                         (this-as this
+                                  (if (and (= (.-x this) (.-initialX this)) (= (.-y this) (.-initialY this)))
+                                    (cb {:x (.-x this) :y (.-y this)})))))))
 
 (defn circle-sprite[{x :x y :y c :color}]
   (let [graphics (-> (js/PIXI.Graphics.)
@@ -50,7 +61,8 @@
       (set! (.-x sprite) x)
       (set! (.-y sprite) y)
       (set! (.-color sprite) c)
-      (draggable sprite))))
+      sprite
+)))
 
 (defn running-actor[init-state]
   (let [running-actor-sprite  (circle-sprite
@@ -63,7 +75,10 @@
       (set! (.-anchor.x pid-text) 0.5)
       (set! (.-anchor.y pid-text) 0.5)
       (.addChild running-actor-sprite pid-text))
-    (draggable running-actor-sprite)))
+    (-> running-actor-sprite
+        (draggable)
+        (clickable #(println "click2"))
+)))
 
 (defn actor-type[init-state]
   (let [actor-type-sprite (circle-sprite
@@ -77,27 +92,19 @@
       (set! (.-anchor.y text) 0.5)
       (.addChild actor-type-sprite text))
 
-    (let [onDragEnd (fn[]
-                      (this-as this
-                               (let [s (.-state this)]
-                                 (if-not (and (= (.-x this) (.-initialX this)) (= (.-y this) (.-initialY this)))
-                                   (put! (:core-chan @state) [:start-new-actor @s])
-                                   (put! (:core-chan @state) [:show-code (:type @s)]))
-                                 (put! (.-eventChan this) [:update-xy {:x (.-initialX this)  :y (.-initialY this)}])
-                                 (set! (.-alpha this) 1)
-                                 (set! (.-dragging this) false))))]
-      (-> actor-type-sprite
-          (.on "pointerdown"
-               (fn [e]
-                 (this-as this
-                          (do
-                            (set! (.-initialX this) (.-x this))
-                            (set! (.-initialY this) (.-y this))
-                            (set! (.-data this) (.-data e))
-                            (set! (.-alpha this) 0.5)
-                            (set! (.-dragging this) true)))))
-          (.on "pointerup" onDragEnd)))
-    (draggable actor-type-sprite)))
+    (-> actor-type-sprite
+        (.on "pointerup" (fn[]
+                           (this-as this
+                                    (let [s (.-state this)]
+                                      (if-not (and (= (.-x this) (.-initialX this)) (= (.-y this) (.-initialY this)))
+                                        (put! (:core-chan @state) [:start-new-actor @s]))
+                                      (put! (.-eventChan this) [:update-xy {:x (.-initialX this)  :y (.-initialY this)}])
+                                      (set! (.-alpha this) 1)
+                                      (set! (.-dragging this) false)))) )
+        (draggable)
+        (clickable #(put! (:core-chan @state) [:show-code (:type (deref (.-state actor-type-sprite)))])))
+    actor-type-sprite
+    ))
 
 (defn component[sprite-constructor state-atom]
   (let [circle     (sprite-constructor @state-atom)
