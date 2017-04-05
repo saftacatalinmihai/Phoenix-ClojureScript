@@ -39,12 +39,11 @@
              :id "message"
              :type "text"
              :class "validate"
-             :value (get-in [:send_message :msg] @state)
+             :value (get-in [:send_message :msg] @state "")
              :on-key-press (fn [e]
-                             ;; (println @state)
                              (swap! state assoc-in [:send_message :msg] (.-target.value e))
                              (if (= 13 (.-charCode e))
-                               (channel/push "send_message" {
+                               (channel/push "send_msg" {
                                                              :to_pid (:to (:send_message @state))
                                                              :msg (:msg (:send_message @state))
                                                              :name (:type (:send_message @state))
@@ -126,7 +125,7 @@
                   (clj->js
                     {:name    "save"
                      :bindKey {:win "Ctrl-S" :mac "Cmd-S"}
-                     :exec    (fn[] (update_actor_code! (get-actor-in-editor)))}))
+                     :exec    #(update_actor_code! (get-actor-in-editor))}))
      e))
   .getSession
   (.setMode "ace/mode/elixir"))
