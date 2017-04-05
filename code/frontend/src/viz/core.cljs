@@ -8,7 +8,10 @@
     [viz.graphics :as graphics]
     [cljs.core.async :refer [put! chan <!]]))
 
-(defonce state (atom {:code-in-editor ""}))
+(defonce state (r/atom {
+                        :code-in-editor ""
+                        :error ""
+                        :send_message {:to "" :msg "" :type ""}}))
 
 (defn set-actor-in-editor[actor_type]
   (swap! state assoc-in [:code-in-editor] actor_type))
@@ -18,8 +21,49 @@
 (defn pixi []
   [:div {:id "pixi-js"}])
 
+(defn slide-out []
+  [:div
+   [:ul {:id "slide-out" :class "side-nav"}
+    [:div {:id "editor"}]]
+   [:a {:href "#" :data-activates "slide-out" :class "button-collapse"}]])
+
+(defn error-modal []
+  [:div {:id "modal1" :class "modal bottom-sheet"}
+    [:p {:id "#error-modal"}] (:error @state)])
+
+(defn send-message-modal []
+  [:div {:id "modal-send-message" :class "modal bottom-sheet"}
+   [:div {:class "input-field"}
+    [:input {
+             :placeholder "ping"
+             :id "message"
+             :type "text"
+             :class "validate"
+             :value (get-in [:send_message :msg] @state)
+             :on-key-press (fn [e]
+                             ;; (println @state)
+                             (swap! state assoc-in [:send_message :msg] (.-target.value e))
+                             (if (= 13 (.-charCode e))
+                               (channel/push "send_message" {
+                                                             :to_pid (:to (:send_message @state))
+                                                             :msg (:msg (:send_message @state))
+                                                             :name (:type (:send_message @state))
+                                                             })))
+             }]
+    [:label {:for "message"} "Message:"]]])
+
+(defn reagent-mount []
+  [:div
+   [slide-out]
+   [error-modal]
+   [send-message-modal]])
+
+(r/render [reagent-mount]
+  (js/document.querySelector "#reagent-mount"))
+
 (r/render [pixi]
   (js/document.querySelector "#pixi-mount"))
+
 
 (.sideNav (js/jQuery ".button-collapse")
   (clj->js
@@ -49,7 +93,10 @@
                                       (set-actor-in-editor actor-type)
                                       (.setValue editor (get resp "code"))
                                       (.sideNav (js/jQuery ".button-collapse") "show"))))
-   
+   :open-message-modal (fn [actor]
+                         (swap! state assoc-in [:send_message :to] (:pid actor))
+                         (swap! state assoc-in [:send_message :type] (:type actor))
+                         (.modal (js/jQuery "#modal-send-message") "open"))
 })
 
 (go
@@ -66,11 +113,11 @@
 (defn update_actor_code![actor_type]
   (channel/push "update_actor" {:name actor_type :actor_code (.getValue editor)}
                 #(do
-                  (.modal (js/jQuery "#modal1") "close")
-                  (js/Materialize.toast "Code saved" 4000 "green"))
+                   (.modal (js/jQuery "#modal1") "close")
+                   (js/Materialize.toast "Code saved" 4000 "green"))
                 #(do
-                  (set! (.-innerHTML (js/document.querySelector "#error-modal")) %)
-                  (.modal (js/jQuery "#modal1") "open"))))
+                   (swap! state assoc-in [:error] %)
+                   (.modal (js/jQuery "#modal1") "open"))))
 
 (-> editor
   ((fn[e] (.setTheme e "ace/theme/monokai") e))

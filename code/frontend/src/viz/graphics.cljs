@@ -75,9 +75,10 @@
       (set! (.-anchor.x pid-text) 0.5)
       (set! (.-anchor.y pid-text) 0.5)
       (.addChild running-actor-sprite pid-text))
+
     (-> running-actor-sprite
         (draggable)
-        (clickable #(println "click2"))
+        (clickable #(put! (:core-chan @state) [:open-message-modal (deref (.-state running-actor-sprite))]))
 )))
 
 (defn actor-type[init-state]
