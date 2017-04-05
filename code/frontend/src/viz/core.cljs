@@ -11,7 +11,7 @@
 (defonce state (r/atom {
                         :code-in-editor ""
                         :error ""
-                        :send_message {:to "" :msg "" :type ""}}))
+                        :send_message {:to "" :msg "" :type "" :response ""}}))
 
 (defn set-actor-in-editor[actor_type]
   (swap! state assoc-in [:code-in-editor] actor_type))
@@ -21,7 +21,7 @@
 (defn pixi []
   [:div {:id "pixi-js"}])
 
-(defn slide-out []
+(defn slide-out-editor []
   [:div
    [:ul {:id "slide-out" :class "side-nav"}
     [:div {:id "editor"}]]
@@ -33,27 +33,33 @@
 
 (defn send-message-modal []
   [:div {:id "modal-send-message" :class "modal bottom-sheet"}
-   [:div {:class "input-field"}
-    [:input {
-             :placeholder "ping"
-             :id "message"
-             :type "text"
-             :class "validate"
-             :value (get-in [:send_message :msg] @state "")
-             :on-key-press (fn [e]
-                             (swap! state assoc-in [:send_message :msg] (.-target.value e))
-                             (if (= 13 (.-charCode e))
-                               (channel/push "send_msg" {
-                                                             :to_pid (:to (:send_message @state))
-                                                             :msg (:msg (:send_message @state))
-                                                             :name (:type (:send_message @state))
-                                                             })))
-             }]
-    [:label {:for "message"} "Message:"]]])
+   [:div {:class "row"}
+    [:div {:class "col s6 input-field"}
+     [:input {
+              :placeholder "ping"
+              :id "message"
+              :type "text"
+              :class "validate"
+              :value (get-in @state [:send_message :msg] "")
+              :on-change #(swap! state assoc-in [:send_message :msg] (-> % .-target .-value))
+              :on-key-press (fn [e]
+                              (if (= 13 (.-charCode e))
+                                (let [msg {
+                                           :to_pid (:to (:send_message @state))
+                                           :msg (:msg (:send_message @state))
+                                           :name (:type (:send_message @state))
+                                           } ]
+                                  (channel/push "send_msg" msg
+                                                #(swap! state assoc-in [:send_message :response] (pr-str %))))))
+              }]
+     [:label {:for "message"} "Message:"]]
+    [:div {:class "col s6"}
+     [:textarea
+      {:disabled true :value (get-in @state [:send_message :response] "")}]]]])
 
 (defn reagent-mount []
   [:div
-   [slide-out]
+   [slide-out-editor]
    [error-modal]
    [send-message-modal]])
 
