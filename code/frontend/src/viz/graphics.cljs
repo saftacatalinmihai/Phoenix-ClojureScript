@@ -29,6 +29,13 @@
              (let [newP (.getLocalPosition (.-data this) (.-parent this))]
                (put! (.-eventChan this) [:update-xy {:x (.-x newP) :y (.-y newP)}])))))
 
+(defn draggable[component]
+  (.on component "pointerdown" onDragStart)
+  (.on component "pointerup" onDragEnd)
+  (.on component "pointermove" onDragMove)
+  component
+)
+
 (defn circle-sprite[{x :x y :y c :color}]
   (let [graphics (-> (js/PIXI.Graphics.)
                      (.lineStyle 5 c 1)
@@ -43,7 +50,7 @@
       (set! (.-x sprite) x)
       (set! (.-y sprite) y)
       (set! (.-color sprite) c)
-      sprite)))
+      (draggable sprite))))
 
 (defn running-actor[init-state]
   (let [running-actor-sprite  (circle-sprite
@@ -55,9 +62,8 @@
                                    {:fill "white" :fontSize 16}))]
       (set! (.-anchor.x pid-text) 0.5)
       (set! (.-anchor.y pid-text) 0.5)
-      (.addChild running-actor-sprite pid-text)
-      )
-    running-actor-sprite))
+      (.addChild running-actor-sprite pid-text))
+    (draggable running-actor-sprite)))
 
 (defn actor-type[init-state]
   (let [actor-type-sprite (circle-sprite
@@ -91,7 +97,7 @@
                             (set! (.-alpha this) 0.5)
                             (set! (.-dragging this) true)))))
           (.on "pointerup" onDragEnd)))
-    actor-type-sprite))
+    (draggable actor-type-sprite)))
 
 (defn component[sprite-constructor state-atom]
   (let [circle     (sprite-constructor @state-atom)
@@ -119,11 +125,6 @@
           ((event-name handlers) event-data))))
     circle))
 
-(defn draggable[component]
-  (.on component "pointerdown" onDragStart)
-  (.on component "pointerup" onDragEnd)
-  (.on component "pointermove" onDragMove))
-
 (defn init[core-chan mount_elem width height]
   (js/console.log "Existing state:", (pr-str state))
   (swap! state assoc-in [:core-chan] core-chan)
@@ -132,22 +133,18 @@
 
     (doseq [[pid running_actor_state] (:running-actors @state)]
       (->> (component running-actor running_actor_state)
-           (.stage.addChild app)
-           (draggable)))
+           (.stage.addChild app)))
 
     (doseq [[type actor-type-state] (:actor-types @state)]
       (->> (component actor-type actor-type-state)
-           (.stage.addChild app)
-           (draggable)))
+           (.stage.addChild app)))
 
     (let [event-channel (chan)]
       (let [handlers {:new_running_actor (fn [[{pid "pid" name "name"} {x :x y :y c :color}]]
                                            (let [running-actor-state (atom {:pid pid :x x :y y :color c :type name})]
                                              (swap! state assoc-in [:running-actors pid] running-actor-state)
                                              (->> (component running-actor (get-in @state [:running-actors pid]))
-                                                  (.stage.addChild app)
-                                                  (draggable))
-                                             ))
+                                                  (.stage.addChild app))))
                       :set_actor_types   (fn [actor_types]
                                            (dorun
                                             (map-indexed
@@ -155,8 +152,7 @@
                                                (swap! state assoc-in [:actor-types type]
                                                       (atom {:type type :x 60 :y (+ 60 (* 120 idx)) :color (rand-color)}))
                                                (->> (component actor-type (get-in @state [:actor-types type]))
-                                                    (.stage.addChild app)
-                                                    (draggable)))
+                                                    (.stage.addChild app)))
                                              actor_types)))}]
         (go
           (while true
