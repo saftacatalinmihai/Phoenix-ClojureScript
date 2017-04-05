@@ -1,8 +1,8 @@
 (ns viz.graphics
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require
-    [reagent.core :as r]
-    [cljs.core.async :refer [put! chan <! >! timeout close!]]))
+   [reagent.core :as r]
+   [cljs.core.async :refer [put! chan <! >! timeout close!]]))
 
 (defn rand-color[]
   (rand-int 0xFFFFFF))
@@ -26,15 +26,8 @@
 (defn onDragMove[e]
   (this-as this
            (if (.-dragging this)
-               (let [newP (.getLocalPosition (.-data this) (.-parent this))]
-                 (put! (.-eventChan this) [:update-xy {:x (.-x newP) :y (.-y newP)}])))))
-
-(defn onDragMove2[e]
-  (this-as this
-           (if (.-dragging this)
-               (let [newP (.getLocalPosition (.-data this) (.-parent this))]
-                 (set! (.-x this) (.-x newP))
-                 (set! (.-y this) (.-y newP))))))
+             (let [newP (.getLocalPosition (.-data this) (.-parent this))]
+               (put! (.-eventChan this) [:update-xy {:x (.-x newP) :y (.-y newP)}])))))
 
 (defn circle-sprite[{x :x y :y c :color}]
   (let [graphics (-> (js/PIXI.Graphics.)
@@ -54,36 +47,37 @@
 
 (defn running-actor[init-state]
   (let [running-actor-sprite  (circle-sprite
-                                {:x     (:x init-state)
-                                 :y     (:y init-state)
-                                 :color (:color init-state)})]
+                               {:x     (:x init-state)
+                                :y     (:y init-state)
+                                :color (:color init-state)})]
     (let [pid-text (js/PIXI.Text. (:pid init-state)
-                                (clj->js
-                                  {:fill "white" :fontSize 16}))]
+                                  (clj->js
+                                   {:fill "white" :fontSize 16}))]
       (set! (.-anchor.x pid-text) 0.5)
-      (set! (.-anchor.y pid-text) 0.5))
+      (set! (.-anchor.y pid-text) 0.5)
+      (.addChild running-actor-sprite pid-text)
+      )
     running-actor-sprite))
 
 (defn actor-type[init-state]
   (let [actor-type-sprite (circle-sprite
-                            {:x     (:x init-state)
-                             :y     (:y init-state)
-                             :color (:color init-state)})]
+                           {:x     (:x init-state)
+                            :y     (:y init-state)
+                            :color (:color init-state)})]
     (let [text (js/PIXI.Text. (:type init-state)
-                            (clj->js
-                              {:fill "white" :fontSize 14}))]
+                              (clj->js
+                               {:fill "white" :fontSize 14}))]
       (set! (.-anchor.x text) 0.5)
       (set! (.-anchor.y text) 0.5)
       (.addChild actor-type-sprite text))
 
     (let [onDragEnd (fn[]
                       (this-as this
-                               (do
+                               (let [s (.-state this)]
                                  (if-not (and (= (.-x this) (.-initialX this)) (= (.-y this) (.-initialY this)))
-                                         (put! (:core-chan @state) [:start-new-actor init-state])
-                                         (put! (:core-chan @state) [:show-code (:type init-state)]))
-                                 (set! (.-x this) (.-initialX this))
-                                 (set! (.-y this) (.-initialY this))
+                                   (put! (:core-chan @state) [:start-new-actor @s])
+                                   (put! (:core-chan @state) [:show-code (:type @s)]))
+                                 (put! (.-eventChan this) [:update-xy {:x (.-initialX this)  :y (.-initialY this)}])
                                  (set! (.-alpha this) 1)
                                  (set! (.-dragging this) false))))]
       (-> actor-type-sprite
@@ -105,12 +99,12 @@
         handlers   {:update-xy (fn[{x :x y :y}]
                                  (swap! state-atom
                                         #(-> %
-                                          (assoc-in
-                                            [:x]
-                                            x)
-                                          (assoc-in
-                                            [:y]
-                                            y))))}]
+                                             (assoc-in
+                                              [:x]
+                                              x)
+                                             (assoc-in
+                                              [:y]
+                                              y))))}]
     (set! (.-state circle) state-atom)
     (set! (.-eventChan circle) event-chan)
     (set! (.-eventHandlers circle) handlers)
@@ -121,8 +115,8 @@
                  (set! (.-color circle) color)))
     (go
       (while true
-             (let [[event-name event-data] (<! event-chan)]
-               ((event-name handlers) event-data))))
+        (let [[event-name event-data] (<! event-chan)]
+          ((event-name handlers) event-data))))
     circle))
 
 (defn draggable[component]
@@ -136,11 +130,6 @@
   (let [app (js/PIXI.Application. width, height, (clj->js {"antialias" true}))]
     (.appendChild mount_elem (.-view app))
 
-    (let [c (component circle-sprite (:component @state))]
-      (->> c
-           (.stage.addChild app)
-           (draggable)))
-
     (doseq [[pid running_actor_state] (:running-actors @state)]
       (->> (component running-actor running_actor_state)
            (.stage.addChild app)
@@ -153,23 +142,25 @@
 
     (let [event-channel (chan)]
       (let [handlers {:new_running_actor (fn [[{pid "pid" name "name"} {x :x y :y c :color}]]
-                                           (swap! state assoc-in [:running-actors pid] (atom {:pid pid :x x :y y :color c :type name}))
-                                           (->> (component running-actor (get-in @state [:running-actors pid]))
-                                                (.stage.addChild app)
-                                                (draggable)))
+                                           (let [running-actor-state (atom {:pid pid :x x :y y :color c :type name})]
+                                             (swap! state assoc-in [:running-actors pid] running-actor-state)
+                                             (->> (component running-actor (get-in @state [:running-actors pid]))
+                                                  (.stage.addChild app)
+                                                  (draggable))
+                                             ))
                       :set_actor_types   (fn [actor_types]
                                            (dorun
-                                             (map-indexed
-                                               (fn [idx type]
-                                                 (swap! state assoc-in [:actor-types type]
-                                                        (atom {:type type :x 60 :y (+ 60 (* 120 idx)) :color (rand-color)}))
-                                                 (->> (component actor-type (get-in @state [:actor-types type]))
-                                                      (.stage.addChild app)
-                                                      (draggable)))
-                                               actor_types)))}]
+                                            (map-indexed
+                                             (fn [idx type]
+                                               (swap! state assoc-in [:actor-types type]
+                                                      (atom {:type type :x 60 :y (+ 60 (* 120 idx)) :color (rand-color)}))
+                                               (->> (component actor-type (get-in @state [:actor-types type]))
+                                                    (.stage.addChild app)
+                                                    (draggable)))
+                                             actor_types)))}]
         (go
           (while true
-                 (let [[event-name event-data] (<! event-channel)]
-                   ((event-name handlers) event-data))))
+            (let [[event-name event-data] (<! event-channel)]
+              ((event-name handlers) event-data))))
 
         event-channel))))

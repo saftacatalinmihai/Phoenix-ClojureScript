@@ -5,6 +5,7 @@
                  [reagent "0.6.1"]
                  [org.clojure/core.async "0.3.442"]]
   :plugins [[lein-figwheel "0.5.8"]]
+  :source-paths ["src"]
   :clean-targets [:target-path "out"]
   :optimizations :none
   :cljsbuild {
