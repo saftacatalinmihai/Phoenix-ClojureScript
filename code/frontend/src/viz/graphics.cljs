@@ -47,11 +47,11 @@
                                   (if (and (= (.-x this) (.-initialX this)) (= (.-y this) (.-initialY this)))
                                     (cb {:x (.-x this) :y (.-y this)})))))))
 
-(defn circle-sprite[{x :x y :y c :color}]
+(defn shape-sprite [shape-constructor {x :x y :y c :color}]
   (let [graphics (-> (js/PIXI.Graphics.)
                      (.lineStyle 5 c 1)
                      (.beginFill c 0.6)
-                     (.drawCircle x y 50)
+                     (shape-constructor x y 50)
                      (.endFill))]
     (set! (.-boundsPadding graphics) 0)
     (let [sprite (js/PIXI.Sprite. (.generateTexture graphics))]
@@ -62,10 +62,16 @@
       (set! (.-y sprite) y)
       (set! (.-color sprite) c)
       sprite
-)))
+      )))
+
+(defn circle-sprite[{x :x y :y c :color}]
+  (shape-sprite #(.drawCircle %1 %2 %3 %4) {:x x :y y :color c}))
+
+(defn rect-sprite[{x :x y :y c :color}]
+  (shape-sprite #(.drawRect %1 %2 %3 (* 1.5 %4) (* 1.5 %4)) {:x x :y y :color c}))
 
 (defn add-actor [init-state]
-  (let [add-actor-sprite (circle-sprite 
+  (let [add-actor-sprite (rect-sprite 
                           {:x (:x init-state)
                            :y (:y init-state)
                            :color (:color init-state)})]
@@ -76,7 +82,6 @@
       (.addChild add-actor-sprite plus-text))
     
     (-> add-actor-sprite
-        (draggable)
         (clickable #(put! (:core-chan @state) [:add-new-actor :ok])))
 ))
 
