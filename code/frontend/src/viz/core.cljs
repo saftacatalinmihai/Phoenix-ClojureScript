@@ -31,9 +31,8 @@
   [:div {:id "modal1" :class "modal bottom-sheet"}
     [:p {:id "#error-modal"}] (:error @state)])
 
-(defn send-message-modal []
-  [:div {:id "modal-send-message" :class "modal bottom-sheet"}
-   [:div {:class "row"}
+(defn send-message-form []
+[:div {:class "row"}
     [:div {:class "col s6 input-field"}
      [:input {
               :placeholder "ping"
@@ -55,13 +54,18 @@
      [:label {:for "message"} "Message:"]]
     [:div {:class "col s6"}
      [:textarea
-      {:disabled true :value (get-in @state [:send_message :response] "")}]]]])
+      {:disabled true :value (get-in @state [:send_message :response] "")}]]]
+)
+
+(defn running-actor-modal []
+  [:div {:id "modal-send-message" :class "modal bottom-sheet"}
+   [send-message-form]])
 
 (defn reagent-mount []
   [:div
    [slide-out-editor]
    [error-modal]
-   [send-message-modal]])
+   [running-actor-modal]])
 
 (r/render [reagent-mount]
   (js/document.querySelector "#reagent-mount"))

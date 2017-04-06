@@ -14,6 +14,7 @@ defmodule Backend do
       supervisor(Backend.Endpoint, []),
       # Start your own worker by calling: Backend.Worker.start_link(arg1, arg2, arg3)
       worker(Backend.CodeServer, []),
+      worker(Backend.EventStore, [])
     ]
 
     # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html

@@ -16,7 +16,7 @@ defmodule Backend.RoomChannel do
 
     def handle_in("start_actor", %{"type" => name}, socket) do
         IO.puts "start actor received #{name}"
-        case :"Elixir.#{name}".start_link do
+        case GenServerProxy.start_link(name) do
             {:ok, pid} -> 
               IO.inspect pid
               {:reply, {:ok, %{:name => name, :pid => to_string(:erlang.pid_to_list(pid))}}, socket}
@@ -32,8 +32,7 @@ defmodule Backend.RoomChannel do
             {:ok, file} = File.open "code/#{name}.ex", [:write]
             IO.binwrite file, String.replace(body, "{{actor_name}}", name)
             Code.eval_file("code/#{name}.ex")
-            {:ok, pid} = :"Elixir.#{name}".start_link
-            {:reply, {:ok, %{:name => name, :pid => to_string(:erlang.pid_to_list(pid))}}, socket}
+            {:reply, {:ok, %{:name => name}}, socket}
           {:error, reason} ->
             IO.inspect reason
             {:reply, {:error, %{:reason => reason}}, socket}
