@@ -25,15 +25,19 @@ defmodule Backend.CodeServer do
   end
 
   def handle_call({:new_actor_type, actor_type}, _from, %{:actor_types => actor_types}) do
-    case File.read("code/template/actor.ex") do
-      {:ok, body} ->
-        {:ok, file} = File.open "code/#{actor_type}.ex", [:write]
-        IO.binwrite file, String.replace(body, "{{actor_name}}", actor_type)
-        Code.eval_file("code/#{actor_type}.ex")
-        {:reply, {:ok, %{:actor_type => actor_type}}, %{:actor_types => [actor_type | actor_types]}}
-      {:error, reason} ->
-        IO.inspect reason
-        {:reply, {:error, %{:reason => reason}}, %{:actor_types => actor_types}}
+    if not Enum.member?(actor_types, actor_type) do
+      case File.read("code/template/actor.ex") do
+        {:ok, body} ->
+          {:ok, file} = File.open "code/#{actor_type}.ex", [:write]
+          IO.binwrite file, String.replace(body, "{{actor_name}}", actor_type)
+          Code.eval_file("code/#{actor_type}.ex")
+          {:reply, {:ok, %{:actor_type => actor_type}}, %{:actor_types => [actor_type | actor_types]}}
+        {:error, reason} ->
+          IO.inspect reason
+          {:reply, {:error, %{:reason => reason}}, %{:actor_types => actor_types}}
+      end
+    else
+      {:reply, {:ok, %{:actor_type => actor_type}}, %{:actor_types => actor_types}}
     end
   end
 

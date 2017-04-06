@@ -15,6 +15,8 @@
                         :new-actor {:type "" :resp ""}
                         }))
 
+(def core-chan (chan))
+
 (defn set-actor-in-editor[actor_type]
   (swap! state assoc-in [:code-in-editor] actor_type))
 
@@ -29,9 +31,35 @@
     [:div {:id "editor"}]]
    [:a {:href "#" :data-activates "slide-out" :class "button-collapse"}]])
 
-(defn error-modal []
+(defn code-error-modal []
   [:div {:id "modal1" :class "modal bottom-sheet"}
-   [:p {:id "#error-modal"}] (:error @state)])
+   [:p {:id "#code-error-modal"}] (:error @state)])
+
+(defn send-message-form []
+  [:div {:class "row"}
+   [:div {:class "col s6 input-field"}
+    [:input {
+             :placeholder "ping"
+             :id "message"
+             :type "text"
+             :class "validate"
+             :value (get-in @state [:send_message :msg] "")
+             :on-change #(swap! state assoc-in [:send_message :msg] (-> % .-target .-value))
+             :on-key-press (fn [e]
+                             (if (= 13 (.-charCode e))
+                               (let [msg {
+                                          :to_pid (:to (:send_message @state))
+                                          :msg (:msg (:send_message @state))
+                                          :name (:type (:send_message @state))
+                                          } ]
+                                 (channel/push "send_msg" msg
+                                               #(swap! state assoc-in [:send_message :response] (pr-str %))))))
+             }]
+    [:label {:for "message"} "Message:"]]
+   [:div {:class "col s6"}
+    [:textarea
+     {:disabled true :value (get-in @state [:send_message :response] "")}]]]
+  )
 
 (defn bottom-input-modal [header label id state-key-list on-enter]
   [:div {:id (str "modal-" id) :class "modal bottom-sheet"}
@@ -69,7 +97,7 @@
                      (fn [resp]
                        (swap! state assoc-in [:new-actor :resp] (pr-str resp))
                        (.modal (js/jQuery "#modal-new-actor") "close")
-                       (.modal (js/jQuery "#modal-new-actor-resp") "open")))))))
+                       (put! core-chan [:show-code input])))))))
 
 (defn send-message-modal []
   (bottom-input-modal
@@ -92,7 +120,7 @@
 (defn reagent-mount []
   [:div
    [slide-out-editor]
-   [error-modal]
+   [code-error-modal]
    [send-message-modal]
    [bottom-modal-resp "send-message" [:send_message :resp]]
    [add-new-actor-modal]
@@ -114,7 +142,6 @@
 
 (def editor (js/ace.edit "editor"))
 
-(def core-chan (chan))
 
 (def graphics-event-chan
   (graphics/init
