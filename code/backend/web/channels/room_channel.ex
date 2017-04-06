@@ -10,7 +10,7 @@ defmodule Backend.RoomChannel do
     end
 
     def handle_in("get_actors", attrs, socket) do
-        actor_modules = Backend.CodeServer.getActorTypes()
+        actor_modules = Backend.CodeServer.get_actor_types()
         {:reply, {:ok, %{:actors => actor_modules}}, socket}
     end
 
@@ -26,17 +26,7 @@ defmodule Backend.RoomChannel do
 
     def handle_in("new_actor", %{"name" => name}, socket) do
         IO.puts "new actor received #{name}"
-
-        case File.read("code/template/actor.ex") do
-          {:ok, body} ->
-            {:ok, file} = File.open "code/#{name}.ex", [:write]
-            IO.binwrite file, String.replace(body, "{{actor_name}}", name)
-            Code.eval_file("code/#{name}.ex")
-            {:reply, {:ok, %{:name => name}}, socket}
-          {:error, reason} ->
-            IO.inspect reason
-            {:reply, {:error, %{:reason => reason}}, socket}
-        end
+        {:reply, Backend.CodeServer.new_actor_type(name), socket}
     end
 
     def handle_in("update_actor", %{"name" => name, "actor_code" => code }, socket) do
@@ -67,7 +57,7 @@ defmodule Backend.RoomChannel do
     def handle_in("send_msg", %{"name" => name, "to_pid" => pid, "msg" => msg}, socket) do
         IO.puts "send msg"
         pid = :erlang.list_to_pid(to_charlist(pid))
-        rec = :"Elixir.#{name}".send_msg(pid, msg)
+        rec = GenServer.call(pid, msg)
         {:reply, {:ok, %{:received => rec}}, socket}
     end
 

@@ -64,6 +64,22 @@
       sprite
 )))
 
+(defn add-actor [init-state]
+  (let [add-actor-sprite (circle-sprite 
+                          {:x (:x init-state)
+                           :y (:y init-state)
+                           :color (:color init-state)})]
+
+    (let [plus-text (js/PIXI.Text. "+" (clj->js {:fill "white" :fontSize 50}))]
+      (set! (.-anchor.x plus-text) 0.5)
+      (set! (.-anchor.y plus-text) 0.5)
+      (.addChild add-actor-sprite plus-text))
+    
+    (-> add-actor-sprite
+        (draggable)
+        (clickable #(put! (:core-chan @state) [:add-new-actor :ok])))
+))
+
 (defn running-actor[init-state]
   (let [running-actor-sprite  (circle-sprite
                                {:x     (:x init-state)
@@ -147,6 +163,9 @@
       (->> (component actor-type actor-type-state)
            (.stage.addChild app)))
 
+    (->> (component add-actor (atom {:x 60 :y 70 :color 0x2ABF3B}))
+         (.stage.addChild app))
+
     (let [event-channel (chan)]
       (let [handlers {:new_running_actor (fn [[{pid "pid" name "name"} {x :x y :y c :color}]]
                                            (let [running-actor-state (atom {:pid pid :x x :y y :color c :type name})]
@@ -158,7 +177,7 @@
                                             (map-indexed
                                              (fn [idx type]
                                                (swap! state assoc-in [:actor-types type]
-                                                      (atom {:type type :x 60 :y (+ 60 (* 120 idx)) :color (rand-color)}))
+                                                      (atom {:type type :x 60 :y (+ 200 (* 120 idx)) :color (rand-color)}))
                                                (->> (component actor-type (get-in @state [:actor-types type]))
                                                     (.stage.addChild app)))
                                              actor_types)))}]
