@@ -49,7 +49,6 @@
 
 (defn shape-sprite [shape-constructor {x :x y :y c :color}]
   (let [graphics (-> (js/PIXI.Graphics.)
-                     (.lineStyle 5 c 1)
                      (.beginFill c 0.6)
                      (shape-constructor x y 50)
                      (.endFill))]
@@ -64,8 +63,11 @@
       sprite
       )))
 
+(defn thick-border [graphics color]
+  (.lineStyle graphics 5 color 1))
+
 (defn circle-sprite[{x :x y :y c :color}]
-  (shape-sprite #(.drawCircle %1 %2 %3 %4) {:x x :y y :color c}))
+  (shape-sprite #( -> %1 (thick-border c) (.drawCircle %2 %3 %4)) {:x x :y y :color c}))
 
 (defn rect-sprite[{x :x y :y c :color}]
   (shape-sprite #(.drawRect %1 %2 %3 (* 1.5 %4) (* 1.5 %4)) {:x x :y y :color c}))
