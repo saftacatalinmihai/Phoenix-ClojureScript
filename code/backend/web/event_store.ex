@@ -35,7 +35,7 @@ defmodule Backend.EventStore do
   end
 
   def handle_info(event, %{:proc_events => ev_list, :watchers => watchers}) do
-    Enum.each(watchers, fn w -> send(to_string(w), event) end)
+    Enum.each(watchers, fn w -> send(w, event) end)
     {:noreply, %{:proc_events => [event | ev_list], :watchers => watchers}}
   end
 
