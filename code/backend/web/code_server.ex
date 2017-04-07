@@ -27,6 +27,10 @@ defmodule Backend.CodeServer do
     GenServer.call(__MODULE__, {:update_code, actor_type, new_code})
   end
 
+  def send_msg(to_pid, msg) do
+    GenServer.call(__MODULE__, {:send_msg, to_pid, msg})
+  end
+
   def init(:ok) do
     actor_types = getActors() |> evalActors
     {:ok, %{:actor_types => actor_types}}
@@ -83,6 +87,19 @@ defmodule Backend.CodeServer do
       e ->
         IO.inspect e
         {:reply, {:error, %{:reson => e}}, state}
+    end
+  end
+
+  def handle_call({:send_msg, to_pid, msg}, _from, state) do
+    try do
+      {msg_evaled, _} = Code.eval_string(msg)
+      pid = :erlang.list_to_pid(to_charlist(to_pid))
+      rec = GenServer.call(pid, msg_evaled)
+      {:reply, {:ok, %{:received => rec}}, state}
+    rescue
+      e ->
+        IO.inspect e
+      {:reply, {:error, %{:reson => e}}, state}
     end
   end
 

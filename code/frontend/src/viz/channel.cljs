@@ -40,6 +40,7 @@
                 (js/console.log "Joined successfully")
                 (push "get_actors", {} callback))))
 
-  (.receive joinedChannel "error" (fn[resp] (js/console.log "Unable to join", resp)))
+  (.receive joinedChannel "error" (fn [resp] (js/console.log "Unable to join", resp)))
+  (.on channel "event" (fn [resp] (js/console.log "Event")))
   )
 

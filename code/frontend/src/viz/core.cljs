@@ -33,7 +33,9 @@
 
 (defn code-error-modal []
   [:div {:id "modal1" :class "modal bottom-sheet"}
-   [:p {:id "#code-error-modal"}] (:error @state)])
+   [:div {:class "modal-content"}
+    [:h5 "Error"]
+    [:p {:id "#code-error-modal"} (:error @state)]]])
 
 (defn send-message-form []
   [:div {:class "row"}
@@ -115,7 +117,12 @@
                      (fn [resp]
                        (swap! state assoc-in [:send_message :resp] (pr-str resp))
                        (.modal (js/jQuery "#modal-send-message") "close")
-                       (.modal (js/jQuery "#modal-send-message-resp") "open")))))))
+                       (.modal (js/jQuery "#modal-send-message-resp") "open"))
+                    (fn [err] 
+                      (swap! state assoc-in [:error] err)
+                      (.modal (js/jQuery "#modal1") "open"))
+
+)))))
 
 (defn reagent-mount []
   [:div

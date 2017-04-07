@@ -14,22 +14,29 @@ defmodule Backend.EventStore do
     GenServer.call(__MODULE__, :get_pid)
   end
 
+  def register_watcher(pid) do
+    GenServer.call(__MODULE__, {:register_watcher, pid})
+  end
+
   def init(:ok) do
-    # :erlang.trace(:processes, true, [:send, :receive])
-    {:ok, []}
+    {:ok, %{:proc_events => [], :watchers => []}}
   end
 
-  def handle_call(:get_events, _from, ev_list) do
-    {:reply, ev_list, ev_list}
+  def handle_call(:get_events, _from, state) do
+    {:reply, state[:proc_events], state}
   end
 
-  def handle_call(:get_pid, _from, ev_list) do
-    {:reply, self(), ev_list}
+  def handle_call({:register_watcher, w}, _from, %{:proc_events => es, :watchers => ws}) do
+    {:reply, :ok, %{:proc_events => es, :watchers => [w | ws]}}
   end
 
-  def handle_info(event, ev_list) do
-    IO.inspect event
-    {:noreply, [event | ev_list]}
+  def handle_call(:get_pid, _from, state) do
+    {:reply, self(), state}
+  end
+
+  def handle_info(event, %{:proc_events => ev_list, :watchers => watchers}) do
+    Enum.each(watchers, fn w -> send(to_string(w), event) end)
+    {:noreply, %{:proc_events => [event | ev_list], :watchers => watchers}}
   end
 
 end
