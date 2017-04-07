@@ -10,6 +10,7 @@
 
 (defonce state (r/atom {
                         :code-in-editor ""
+                        :response {:header "" :value ""}
                         :error ""
                         :send_message {:to "" :msg "" :type "" :resp ""}
                         :new-actor {:type "" :resp ""}
@@ -55,12 +56,12 @@
                                           :name (:type (:send_message @state))
                                           } ]
                                  (channel/push "send_msg" msg
-                                               #(swap! state assoc-in [:send_message :response] (pr-str %))))))
+                                               #(swap! state assoc-in [:response :value] (pr-str %))))))
              }]
     [:label {:for "message"} "Message:"]]
    [:div {:class "col s6"}
     [:textarea
-     {:disabled true :value (get-in @state [:send_message :response] "")}]]]
+     {:disabled true :value (get-in @state [:response :value] "")}]]]
   )
 
 (defn bottom-input-modal [header label id state-key-list on-enter]
@@ -80,12 +81,12 @@
      [:label {:for id} label]]
     ]])
 
-(defn bottom-modal-resp [id state-key-list]
-  [:div {:id (str "modal-" id "-resp") :class "modal bottom-sheet"}
+(defn bottom-modal-resp [{header :header value :value}]
+  [:div {:id (str "modal-resp") :class "modal bottom-sheet"}
    [:div {:class "modal-content"}
-    [:h4 "Response"]
+    [:h4 header]
     [:textarea
-     {:disabled true :value (get-in @state state-key-list)}]]])
+     {:disabled true :value value}]]])
 
 (defn add-new-actor-modal []
   (bottom-input-modal
@@ -97,7 +98,8 @@
      (let [msg {:name input}]
        (channel/push "new_actor" msg
                      (fn [resp]
-                       (swap! state assoc-in [:new-actor :resp] (pr-str resp))
+                       ;; TODO: Move all effects in :handler
+                       (swap! state assoc-in [:response :value] (pr-str resp))
                        (.modal (js/jQuery "#modal-new-actor") "close")
                        (put! core-chan [:show-code input])))))))
 
@@ -115,9 +117,10 @@
                 } ]
        (channel/push "send_msg" msg
                      (fn [resp]
-                       (swap! state assoc-in [:send_message :resp] (pr-str resp))
+                       (swap! state assoc-in [:response :value] (pr-str resp))
+                       (swap! state assoc-in [:response :header] "Response")
                        (.modal (js/jQuery "#modal-send-message") "close")
-                       (.modal (js/jQuery "#modal-send-message-resp") "open"))
+                       (.modal (js/jQuery "#modal-resp") "open"))
                     (fn [err] 
                       (swap! state assoc-in [:error] err)
                       (.modal (js/jQuery "#modal1") "open"))
@@ -129,9 +132,9 @@
    [slide-out-editor]
    [code-error-modal]
    [send-message-modal]
-   [bottom-modal-resp "send-message" [:send_message :resp]]
+   [bottom-modal-resp (get-in @state [:response] )]
    [add-new-actor-modal]
-   [bottom-modal-resp "new-actor" [:new-actor :resp]]])
+   ])
 
 (r/render [reagent-mount]
           (js/document.querySelector "#reagent-mount"))
