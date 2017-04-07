@@ -9,16 +9,17 @@ defmodule Backend.RoomChannel do
       :erlang.binary_to_existing_atom(module_string <> <<>>, :utf8)
     end
 
-    def handle_in("get_actors", attrs, socket) do
+    def handle_in("get_actors", _attrs, socket) do
         actor_modules = Backend.CodeServer.get_actor_types()
         {:reply, {:ok, %{:actors => actor_modules}}, socket}
     end
 
     def handle_in("start_actor", %{"type" => name}, socket) do
         IO.puts "start actor received #{name}"
-        case GenServerProxy.start_link(name) do
+        case :"Elixir.#{name}".start_link do
             {:ok, pid} -> 
               IO.inspect pid
+              IO.inspect :erlang.trace(pid, true, [:send, :receive, {:tracer, Backend.EventStore.get_pid()}])
               {:reply, {:ok, %{:name => name, :pid => to_string(:erlang.pid_to_list(pid))}}, socket}
             _ ->          {:reply, {:error, %{:reason => "Unable to start actor type: #{name}"}}, socket}
         end
@@ -54,7 +55,7 @@ defmodule Backend.RoomChannel do
         end
     end
 
-    def handle_in("send_msg", %{"name" => name, "to_pid" => pid, "msg" => msg}, socket) do
+    def handle_in("send_msg", %{"name" => _name, "to_pid" => pid, "msg" => msg}, socket) do
         IO.puts "send msg"
         pid = :erlang.list_to_pid(to_charlist(pid))
         rec = GenServer.call(pid, msg)
