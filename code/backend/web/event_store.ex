@@ -15,6 +15,7 @@ defmodule Backend.EventStore do
   end
 
   def init(:ok) do
+    # :erlang.trace(:processes, true, [:send, :receive])
     {:ok, []}
   end
 
