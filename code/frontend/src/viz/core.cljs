@@ -32,8 +32,8 @@
     [:div {:id "editor"}]]
    [:a {:href "#" :data-activates "slide-out" :class "button-collapse"}]])
 
-(defn code-error-modal []
-  [:div {:id "modal1" :class (str "modal bottom-sheet")}
+(defn error-modal []
+  [:div {:id "error-modal" :class (str "modal bottom-sheet")}
    [:div {:class "modal-content"}
     [:h5 "Error"]
     [:p {:id "#code-error-modal"} (:error @state)]]])
@@ -81,7 +81,7 @@
 (defn reagent-mount []
   [:div
    [slide-out-editor]
-   [code-error-modal]
+   [error-modal]
    [send-message-modal]
    [bottom-modal-resp (get-in @state [:response] )]
    [add-new-actor-modal]
@@ -146,25 +146,26 @@
                          (channel/push "send_msg" msg
                                        (fn [resp]
                                          (swap! state assoc-in [:response] {:value (pr-str resp) :header "Response"})
-                                         (.modal (js/jQuery "#modal-send-message") "close")
                                          (.modal (js/jQuery "#modal-resp") "open"))
                                        (fn [err] 
                                          (swap! state assoc-in [:error] err)
-                                         (.modal (js/jQuery "#modal1") "open"))))
+                                         (.modal (js/jQuery "#error-modal") "open"))))
    :new_actor_type (fn [msg] 
                      (channel/push "new_actor" msg
                                    (fn [resp]
                                      (swap! state assoc-in [:response :value] (pr-str resp))
                                      (.modal (js/jQuery "#modal-new-actor") "close")
-                                     (put! core-chan [:show-code (:name msg)]))))
+                                     (put! core-chan [:show-code (:name msg)])
+                                     (put! graphics-event-chan [:new_actor_type (:name msg)])
+                                     )))
    :update_actor_code (fn [actor_type]
                         (channel/push "update_actor" {:name actor_type :actor_code (.getValue editor)}
                                       #(do
-                                         (.modal (js/jQuery "#modal1") "close")
+                                         (.modal (js/jQuery "#error-modal") "close")
                                          (js/Materialize.toast "Code saved" 4000 "green"))
                                       #(do
                                          (swap! state assoc-in [:error] %)
-                                         (.modal (js/jQuery "#modal1") "open"))) )
+                                         (.modal (js/jQuery "#error-modal") "open"))) )
    })
 
 ;; Backent channel set-up

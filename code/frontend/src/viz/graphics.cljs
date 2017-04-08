@@ -8,7 +8,9 @@
   (rand-int 0xFFFFFF))
 
 (defonce state
-  (atom {:component (atom {:x 200 :y 200 :color (rand-color)})}))
+  (atom {
+         :actor-types-number 0
+         :component (atom {:x 200 :y 200 :color (rand-color)})}))
 
 (defn onDragStart[e]
   (this-as this
@@ -179,6 +181,12 @@
                                              (swap! state assoc-in [:running-actors pid] running-actor-state)
                                              (->> (component running-actor (get-in @state [:running-actors pid]))
                                                   (.stage.addChild app))))
+                      :new_actor_type (fn [actor_type]
+                                        (swap! state assoc-in [:actor-types actor_type]
+                                               (atom {:type actor_type :x 60 :y (+ 200 (* 120 (get-in @state [:actor-types-number]))) :color (rand-color)}))
+                                        (swap! state update-in [:actor-types-number] inc)
+                                        (->> (component actor-type (get-in @state [:actor-types actor_type]))
+                                             (.stage.addChild app)))
                       :set_actor_types   (fn [actor_types]
                                            (dorun
                                             (map-indexed
@@ -187,7 +195,9 @@
                                                       (atom {:type type :x 60 :y (+ 200 (* 120 idx)) :color (rand-color)}))
                                                (->> (component actor-type (get-in @state [:actor-types type]))
                                                     (.stage.addChild app)))
-                                             actor_types)))}]
+                                             actor_types))
+                                           (swap! state assoc-in [:actor-types-number] (count actor_types))
+                                           )}]
         (go
           (while true
             (let [[event-name event-data] (<! event-channel)]
