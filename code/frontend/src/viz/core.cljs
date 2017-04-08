@@ -8,21 +8,21 @@
    [viz.graphics :as graphics]
    [cljs.core.async :refer [put! chan <!]]))
 
+;; REAGENT STATE
 (defonce state (r/atom {
-                        :code-in-editor ""
+                        :editor {:actor-type ""}
                         :response {:header "" :value ""}
                         :error ""
-                        :send_message {:to "" :msg "" :type "" :resp ""}
-                        :new-actor {:type "" :resp ""}
+                        :send_message {:to "" :msg ""}
+                        :new-actor {:type ""}
                         }))
 
+;; Core event channel
 (def core-chan (chan))
+(defn raise-event [event-name event-data]
+  (put! core-chan [event-name event-data]))
 
-(defn set-actor-in-editor[actor_type]
-  (swap! state assoc-in [:code-in-editor] actor_type))
-
-(defn get-actor-in-editor[] (:code-in-editor @state))
-
+;; Reagent components
 (defn pixi []
   [:div {:id "pixi-js"}])
 
@@ -33,36 +33,10 @@
    [:a {:href "#" :data-activates "slide-out" :class "button-collapse"}]])
 
 (defn code-error-modal []
-  [:div {:id "modal1" :class "modal bottom-sheet"}
+  [:div {:id "modal1" :class (str "modal bottom-sheet")}
    [:div {:class "modal-content"}
     [:h5 "Error"]
     [:p {:id "#code-error-modal"} (:error @state)]]])
-
-(defn send-message-form []
-  [:div {:class "row"}
-   [:div {:class "col s6 input-field"}
-    [:input {
-             :placeholder "ping"
-             :id "message"
-             :type "text"
-             :class "validate"
-             :value (get-in @state [:send_message :msg] "")
-             :on-change #(swap! state assoc-in [:send_message :msg] (-> % .-target .-value))
-             :on-key-press (fn [e]
-                             (if (= 13 (.-charCode e))
-                               (let [msg {
-                                          :to_pid (:to (:send_message @state))
-                                          :msg (:msg (:send_message @state))
-                                          :name (:type (:send_message @state))
-                                          } ]
-                                 (channel/push "send_msg" msg
-                                               #(swap! state assoc-in [:response :value] (pr-str %))))))
-             }]
-    [:label {:for "message"} "Message:"]]
-   [:div {:class "col s6"}
-    [:textarea
-     {:disabled true :value (get-in @state [:response :value] "")}]]]
-  )
 
 (defn bottom-input-modal [header label id state-key-list on-enter]
   [:div {:id (str "modal-" id) :class "modal bottom-sheet"}
@@ -94,14 +68,7 @@
    "Type"
    "new-actor"
    [:new-actor :type]
-   (fn [input]
-     (let [msg {:name input}]
-       (channel/push "new_actor" msg
-                     (fn [resp]
-                       ;; TODO: Move all effects in :handler
-                       (swap! state assoc-in [:response :value] (pr-str resp))
-                       (.modal (js/jQuery "#modal-new-actor") "close")
-                       (put! core-chan [:show-code input])))))))
+   (fn [input] (raise-event :new_actor_type {:name input}))))
 
 (defn send-message-modal []
   (bottom-input-modal
@@ -109,23 +76,7 @@
    "Message"
    "send-message"
    [:send_message :msg]
-   (fn [input]
-     (let [msg {
-                :to_pid (:to (:send_message @state))
-                :msg (:msg (:send_message @state))
-                :name (:type (:send_message @state))
-                } ]
-       (channel/push "send_msg" msg
-                     (fn [resp]
-                       (swap! state assoc-in [:response :value] (pr-str resp))
-                       (swap! state assoc-in [:response :header] "Response")
-                       (.modal (js/jQuery "#modal-send-message") "close")
-                       (.modal (js/jQuery "#modal-resp") "open"))
-                    (fn [err] 
-                      (swap! state assoc-in [:error] err)
-                      (.modal (js/jQuery "#modal1") "open"))
-
-)))))
+   (fn [input] (raise-event :send-actor-message (get @state :send_message )))))
 
 (defn reagent-mount []
   [:div
@@ -142,7 +93,7 @@
 (r/render [pixi]
           (js/document.querySelector "#pixi-mount"))
 
-
+;; JavaScript library functions ( set-up )
 (.sideNav (js/jQuery ".button-collapse")
           (clj->js
            {:menuWidth (/ (-> js/window js/jQuery .width) 2)
@@ -150,54 +101,8 @@
 
 (.modal (js/jQuery ".modal"))
 
+;; Editor set-up
 (def editor (js/ace.edit "editor"))
-
-
-(def graphics-event-chan
-  (graphics/init
-   core-chan
-   (js/document.querySelector "#pixi-js")
-   (- (-> js/window js/jQuery .width) 10) (- (-> js/window js/jQuery .height) 10)))
-
-(def handlers
-  {:start-new-actor (fn[new-actor]
-                      (channel/push "start_actor" {:type (:type new-actor)}
-                                    (fn [running_actor]
-                                      (put! graphics-event-chan [:new_running_actor [running_actor new-actor]]))))
-   :show-code       (fn [actor-type]
-                      (channel/push "get_actor_code" {:name actor-type}
-                                    (fn [resp]
-                                      (set-actor-in-editor actor-type)
-                                      (.setValue editor (get resp "code"))
-                                      (.sideNav (js/jQuery ".button-collapse") "show"))))
-   :open-message-modal (fn [actor]
-                         (swap! state assoc-in [:send_message :to] (:pid actor))
-                         (swap! state assoc-in [:send_message :type] (:type actor))
-                         (.modal (js/jQuery "#modal-send-message") "open"))
-   :add-new-actor (fn [_]
-                    (js/console.log "++")
-                    (.modal (js/jQuery "#modal-new-actor") "open"))
-   })
-
-(go
-  (while true
-    (let [[event-name event-data] (<! core-chan)]
-      ((event-name handlers) event-data))))
-
-(defonce joined-chan
-  (channel/join
-   (fn [actor_types]
-     (put! graphics-event-chan [:set_actor_types (get actor_types "actors")]))))
-
-
-(defn update_actor_code![actor_type]
-  (channel/push "update_actor" {:name actor_type :actor_code (.getValue editor)}
-                #(do
-                   (.modal (js/jQuery "#modal1") "close")
-                   (js/Materialize.toast "Code saved" 4000 "green"))
-                #(do
-                   (swap! state assoc-in [:error] %)
-                   (.modal (js/jQuery "#modal1") "open"))))
 
 (-> editor
     ((fn[e] (.setTheme e "ace/theme/monokai") e))
@@ -206,7 +111,72 @@
                     (clj->js
                      {:name    "save"
                       :bindKey {:win "Ctrl-S" :mac "Cmd-S"}
-                      :exec    #(update_actor_code! (get-actor-in-editor))}))
+                      :exec    #(raise-event :update_actor_code (:code-in-editor @state))}))
        e))
     .getSession
     (.setMode "ace/mode/elixir"))
+
+;; Graphics initialization -> graphics event channel
+(def graphics-event-chan
+  (graphics/init
+   core-chan
+   (js/document.querySelector "#pixi-js")
+   (- (-> js/window js/jQuery .width) 10) (- (-> js/window js/jQuery .height) 10)))
+
+;; Core event channel handlers
+(def handlers
+  {:start-new-actor (fn[new-actor]
+                      (channel/push "start_actor" {:type (:type new-actor)}
+                                    (fn [running_actor]
+                                      (put! graphics-event-chan [:new_running_actor [running_actor new-actor]]))))
+   :show-code       (fn [actor-type]
+                      (channel/push "get_actor_code" {:name actor-type}
+                                    (fn [resp]
+                                      (swap! state assoc-in [:editor :actor-type] actor-type)
+                                      (.setValue editor (get resp "code"))
+                                      (.sideNav (js/jQuery ".button-collapse") "show")
+                                      )))
+   :open-message-modal (fn [actor]
+                         (swap! state assoc-in [:send_message :to] (:pid actor))
+                         (.modal (js/jQuery "#modal-send-message") "open"))
+   :add-new-actor (fn [_]
+                    (.modal (js/jQuery "#modal-new-actor") "open"))
+   :send-actor-message (fn [msg]
+                         (js/console.log (pr-str msg))
+                         (channel/push "send_msg" msg
+                                       (fn [resp]
+                                         (swap! state assoc-in [:response] {:value (pr-str resp) :header "Response"})
+                                         (.modal (js/jQuery "#modal-send-message") "close")
+                                         (.modal (js/jQuery "#modal-resp") "open"))
+                                       (fn [err] 
+                                         (swap! state assoc-in [:error] err)
+                                         (.modal (js/jQuery "#modal1") "open"))))
+   :new_actor_type (fn [msg] 
+                     (channel/push "new_actor" msg
+                                   (fn [resp]
+                                     (swap! state assoc-in [:response :value] (pr-str resp))
+                                     (.modal (js/jQuery "#modal-new-actor") "close")
+                                     (put! core-chan [:show-code (:name msg)]))))
+   :update_actor_code (fn [actor_type]
+                        (channel/push "update_actor" {:name actor_type :actor_code (.getValue editor)}
+                                      #(do
+                                         (.modal (js/jQuery "#modal1") "close")
+                                         (js/Materialize.toast "Code saved" 4000 "green"))
+                                      #(do
+                                         (swap! state assoc-in [:error] %)
+                                         (.modal (js/jQuery "#modal1") "open"))) )
+   })
+
+;; Backent channel set-up
+(defonce joined-chan
+  (channel/join
+   (fn [actor_types]
+     (put! graphics-event-chan [:set_actor_types (get actor_types "actors")]))))
+
+;; Start listening for events
+(go
+  (while true
+    (let [[event-name event-data] (<! core-chan)]
+      ((event-name handlers) event-data))))
+
+

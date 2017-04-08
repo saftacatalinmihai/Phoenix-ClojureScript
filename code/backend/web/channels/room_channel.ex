@@ -62,7 +62,7 @@ defmodule Backend.RoomChannel do
       {:reply, Backend.CodeServer.get_actor_code(name), socket}
     end
 
-    def handle_in("send_msg", %{"name" => _name, "to_pid" => pid, "msg" => msg}, socket) do
+    def handle_in("send_msg", %{"to" => pid, "msg" => msg}, socket) do
       IO.puts "send msg"
       {:reply, Backend.CodeServer.send_msg(pid, msg), socket}
     end
