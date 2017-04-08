@@ -111,7 +111,7 @@
                     (clj->js
                      {:name    "save"
                       :bindKey {:win "Ctrl-S" :mac "Cmd-S"}
-                      :exec    #(raise-event :update_actor_code (:code-in-editor @state))}))
+                      :exec    #(raise-event :update_actor_code (get-in @state [:editor :actor-type]))}))
        e))
     .getSession
     (.setMode "ace/mode/elixir"))
