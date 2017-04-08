@@ -164,6 +164,9 @@
   (let [app (js/PIXI.Application. width, height, (clj->js {"antialias" true}))]
     (.appendChild mount_elem (.-view app))
 
+    (def message-sprite (js/PIXI.Sprite.fromImage "imgs/message-icon-png-14.png"))
+    (.stage.addChild app message-sprite);
+
     (doseq [[pid running_actor_state] (:running-actors @state)]
       (->> (component running-actor running_actor_state)
            (.stage.addChild app)))
