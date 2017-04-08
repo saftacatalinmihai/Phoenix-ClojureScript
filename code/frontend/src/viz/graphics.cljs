@@ -86,6 +86,7 @@
       (.addChild add-actor-sprite plus-text))
     
     (-> add-actor-sprite
+        (draggable)
         (clickable #(put! (:core-chan @state) [:add-new-actor :ok])))
 ))
 
@@ -132,6 +133,16 @@
     actor-type-sprite
     ))
 
+(defn message-component [init-state]
+  (let [message-sprite (js/PIXI.Sprite.fromImage "imgs/message-icon-png-14.png")]
+    (.scale.set message-sprite 0.1)    
+    (.anchor.set message-sprite 0.5)
+    (set! (.-interactive message-sprite) true)
+    (set! (.-buttonMode message-sprite) true)
+    (set! (.-x message-sprite) (:x init-state))
+    (set! (.-y message-sprite) (:y init-state))
+    (draggable message-sprite)))
+
 (defn component[sprite-constructor state-atom]
   (let [circle     (sprite-constructor @state-atom)
         event-chan (chan)
@@ -164,8 +175,8 @@
   (let [app (js/PIXI.Application. width, height, (clj->js {"antialias" true}))]
     (.appendChild mount_elem (.-view app))
 
-    (def message-sprite (js/PIXI.Sprite.fromImage "imgs/message-icon-png-14.png"))
-    (.stage.addChild app message-sprite);
+    (def m (component message-component (atom {:x 200 :y 100})))
+    (.stage.addChild app m)
 
     (doseq [[pid running_actor_state] (:running-actors @state)]
       (->> (component running-actor running_actor_state)
