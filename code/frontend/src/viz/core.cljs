@@ -1,9 +1,10 @@
 (ns viz.core
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require
-   [dommy.core :as dommy
-    :refer-macros  [sel sel1]]
+   [dommy.core :as dommy :refer-macros  [sel sel1]]
    [reagent.core :as r]
+   ;; cljsjs.ace
+   ;; cljsjs.jquery
    [viz.channel :as channel]
    [viz.graphics :as graphics]
    [cljs.core.async :refer [put! chan <!]]))

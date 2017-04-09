@@ -1,4 +1,5 @@
-(ns viz.channel)
+(ns viz.channel
+ (:require cljsjs.phoenix))
 
 (def socket
   (new js/Phoenix.Socket

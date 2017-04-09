@@ -2,6 +2,7 @@
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require
    [reagent.core :as r]
+   cljsjs.pixi
    [cljs.core.async :refer [put! chan <! >! timeout close!]]))
 
 (defn rand-color[]

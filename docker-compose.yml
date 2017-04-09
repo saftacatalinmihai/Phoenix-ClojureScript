@@ -8,6 +8,7 @@ services:
       - "3449:3449"
     volumes:
       - ./code/frontend:/code
+      - ~/.m2:~/.m2
     depends_on:
       - backend
     links:
