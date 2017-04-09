@@ -1,10 +1,11 @@
 (ns viz.core
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require
-   [dommy.core :as dommy :refer-macros  [sel sel1]]
+   [cljsjs.material-ui]
+   [cljs-react-material-ui.core :refer [get-mui-theme color]]
+   [cljs-react-material-ui.reagent :as ui]
+   [cljs-react-material-ui.icons :as ic]
    [reagent.core :as r]
-   ;; cljsjs.ace
-   ;; cljsjs.jquery
    [viz.channel :as channel]
    [viz.graphics :as graphics]
    [cljs.core.async :refer [put! chan <!]]))
@@ -17,6 +18,21 @@
                         :send_message {:to "" :msg ""}
                         :new-actor {:type ""}
                         }))
+
+(defn running-actor-menu []
+  [ui/mui-theme-provider
+   {:mui-theme (get-mui-theme
+                 {:palette {:text-color (color :green600)}})}
+   [:div
+    [ui/paper {:style (clj->js {:margin "16px 32px 16px 0px" :position "absolute" :top 80 :left 200})}
+     [ui/menu
+      [ui/menu-item {:primary-text "1" :right-icon (ic/action-favorite)}]
+      [ui/menu-item {:primary-text "2" :right-icon (ic/social-group)}]
+      [ui/menu-item {:primary-text "3"}]
+      [ui/menu-item {:primary-text "4"}]
+      ]
+     ]
+    ]])
 
 ;; Core event channel
 (def core-chan (chan))
@@ -81,6 +97,7 @@
 
 (defn reagent-mount []
   [:div
+   [running-actor-menu]
    [slide-out-editor]
    [error-modal]
    [send-message-modal]

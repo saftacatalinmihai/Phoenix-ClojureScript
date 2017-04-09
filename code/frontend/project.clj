@@ -1,10 +1,11 @@
 (defproject viz "0.1.0-SNAPSHOT"
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [prismatic/dommy "1.1.0"]
                  [org.clojure/clojurescript "1.9.229"]
-                 
-                 [reagent "0.6.1"]
                  [org.clojure/core.async "0.3.442"]
+                 [reagent "0.6.1" :exclusions [org.clojure/tools.reader cljsjs/react cljsjs/react-dom]]
+                 [cljsjs/codemirror "5.24.0-1"]
+                 ;; [cljsjs/material-ui "0.17.1-0"]
+                 [cljs-react-material-ui "0.2.39"]
                  [cljsjs/phoenix "1.2.0-0"]
                  [cljsjs/jquery "2.2.4-0"]
                  [cljsjs/pixi "4.4.3-0"]
