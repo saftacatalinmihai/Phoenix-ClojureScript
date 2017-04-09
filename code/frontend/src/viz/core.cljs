@@ -12,6 +12,9 @@
 
 ;; REAGENT STATE
 (defonce state (r/atom {
+                        :some-menu-opened false
+                        :main-menu {:x 0 :y 0 :open false}
+                        :message-menu {:x 0 :y 0 :open false}
                         :editor {:actor-type ""}
                         :response {:header "" :value ""}
                         :error ""
@@ -21,10 +24,11 @@
 
 (defn running-actor-menu []
   [ui/mui-theme-provider
-   {:mui-theme (get-mui-theme
+   {
+    :mui-theme (get-mui-theme
                  {:palette {:text-color (color :green600)}})}
-   [:div
-    [ui/paper {:style (clj->js {:margin "16px 32px 16px 0px" :position "absolute" :top 80 :left 200})}
+   [:div {:style (clj->js {:display (if (= true (get-in @state [:message-menu :open])) "inline-block" "none")})}
+    [ui/paper {:style (clj->js {:margin "16px 32px 16px 0px" :position "absolute" :top (get-in @state [:message-menu :y]) :left (get-in @state [:message-menu :x])})}
      [ui/menu
       [ui/menu-item {:primary-text "1" :right-icon (ic/action-favorite)}]
       [ui/menu-item {:primary-text "2" :right-icon (ic/social-group)}]
@@ -50,10 +54,20 @@
    [:a {:href "#" :data-activates "slide-out" :class "button-collapse"}]])
 
 (defn error-modal []
-  [:div {:id "error-modal" :class (str "modal bottom-sheet")}
-   [:div {:class "modal-content"}
-    [:h5 "Error"]
-    [:p {:id "#code-error-modal"} (:error @state)]]])
+  [:div 
+   [:raised-button {:label "Dialog" :on-touch-tap (fn [event value]
+                                                    (js/console.log event)
+                                                    (js/console.log value)
+                                                    (swap! state assoc-in [:error-open] true)
+                                                    )}]]
+  [:dialog {
+            :id "error-modal" 
+            :title "Error"
+            :open (get @state :error-open)
+            :class (str "modal bottom-sheet") 
+            }
+   [:h5 "Error"]
+   [:p {:id "#code-error-modal"} (:error @state)]])
 
 (defn bottom-input-modal [header label id state-key-list on-enter]
   [:div {:id (str "modal-" id) :class "modal bottom-sheet"}
@@ -141,6 +155,23 @@
    (js/document.querySelector "#pixi-js")
    (- (-> js/window js/jQuery .width) 10) (- (-> js/window js/jQuery .height) 10)))
 
+(defn no-menu-opened? [] (not (get @state :some-menu-opened)))
+(defn open-component-menu [component-menu x y]
+  (swap! state assoc-in [component-menu] {:x x :y y :open true} )
+  (swap! state assoc-in [:some-menu-opened] true)
+)
+(defn close-other-menues []
+  (js/console.log "close others")
+  (swap! state assoc-in [:main-menu :open] false)
+  (swap! state assoc-in [:message-menu :open] false)
+  (swap! state assoc-in [:some-menu-opened] false)
+)
+(defn component-click [component-menu x y] 
+  (if (no-menu-opened?)
+    (open-component-menu component-menu x y)
+    (close-other-menues)))
+
+
 ;; Core event channel handlers
 (def handlers
   {:start-new-actor (fn[new-actor]
@@ -183,8 +214,16 @@
                                          (js/Materialize.toast "Code saved" 4000 "green"))
                                       #(do
                                          (swap! state assoc-in [:error] %)
-                                         (.modal (js/jQuery "#error-modal") "open"))) )
+                                         (.modal (js/jQuery "#error-modal") "open"))))
+   :message-click (fn [{x :x y :y}]
+                    (js/console.log "1")
+                    (component-click :message-menu x y))
+   :canvas-click (fn [{x :x y :y}] 
+                   (js/console.log "2")
+                   (component-click :main-menu x y))
    })
+
+
 
 ;; Backent channel set-up
 (defonce joined-chan

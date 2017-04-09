@@ -142,7 +142,9 @@
     (set! (.-buttonMode message-sprite) true)
     (set! (.-x message-sprite) (:x init-state))
     (set! (.-y message-sprite) (:y init-state))
-    (draggable message-sprite)))
+    (draggable message-sprite)
+    (clickable message-sprite #(put! (:core-chan @state) [:message-click {:x (.-x message-sprite ) :y (.-y message-sprite) }])))
+)
 
 (defn component[sprite-constructor state-atom]
   (let [circle     (sprite-constructor @state-atom)
@@ -175,6 +177,12 @@
   (swap! state assoc-in [:core-chan] core-chan)
   (let [app (js/PIXI.Application. width, height, (clj->js {"antialias" true}))]
     (.appendChild mount_elem (.-view app))
+    (set! (.-stage.interactive app) true)
+    (set! (.-stage.hitArea app) (js/PIXI.Rectangle. 0 0 1000 1000))
+    (.on (.-stage app) "pointerdown" (fn [e] 
+                                       (js/console.log (.-data.originalEvent.pageX e) , (.-data.originalEvent.pageY e))
+                                       (put! core-chan [:canvas-click {:x  (.-data.originalEvent.pageX e) :y (.-data.originalEvent.pageY e)}])
+))
 
     (def m (component message-component (atom {:x 200 :y 100})))
     (.stage.addChild app m)
