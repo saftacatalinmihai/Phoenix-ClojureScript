@@ -204,10 +204,11 @@
                                 :component m
                                 :started false
                                 :from {:x 0 :y 0}
-                                :to {:x 500 :y 200}}}}))
+                                :to {:x 500 :y 500}}}}))
 
-    (defn move-liniar [{x :x y :y to-x :to-x to-y :to-y}]
-      {:x (+ x ( * (- to-x x) 0.01)) :y (+ y (* ( - to-y y) 0.01))}
+    (defn move-liniar [{x :x y :y from-x :from-x from-y :from-y to-x :to-x to-y :to-y}]
+      ;; {:x (+ x ( * (- to-x x) 0.01)) :y (+ y (* ( - to-y y) 0.01))}
+      {:x ( + x ( / ( - to-x from-x ) 500 )) :y (+ y ( / ( - to-y from-y) 500)) }
       )
     (defn next-frame [component animation]
       (if (not (:started animation))
@@ -219,10 +220,16 @@
         (if ( and
               (= (get-in animation [:to :x]) (.-x component))
               (= (get-in animation [:to :y]) (.-y component)))
-          (swap! animations update-in [:animations] (fn [anims] (dissoc anims component)))
+          (do 
+            (swap! animations update-in [:animations] (fn [anims] (dissoc anims component)))
+            (js/console.log "Finished")
+            )
           (let [{next-x :x next-y :y} (move-liniar {:x (.-x component) :y (.-y component)
                                                     :to-x (get-in animation [:to :x])
-                                                    :to-y (get-in animation [:to :y]) })]
+                                                    :to-y (get-in animation [:to :y]) 
+                                                    :from-x (get-in animation [:from :x])
+                                                    :from-y (get-in animation [:from :y]) 
+                                                    })]
             (set! (.-x component) next-x)
             (set! (.-y component) next-y))
           )))
