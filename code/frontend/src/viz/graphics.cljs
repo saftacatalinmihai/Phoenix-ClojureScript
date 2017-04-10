@@ -203,30 +203,29 @@
                             {m {
                                 :component m
                                 :started false
-                                :ended false
                                 :from {:x 0 :y 0}
-                                :to {:x 500 :y 500}}}}))
+                                :to {:x 500 :y 200}}}}))
+
+    (defn move-liniar [{x :x y :y to-x :to-x to-y :to-y}]
+      {:x (+ x ( * (- to-x x) 0.01)) :y (+ y (* ( - to-y y) 0.01))}
+      )
     (defn next-frame [component animation]
-      ;; (js/console.log component)
-      ;; (js/console.log (pr-str animation))
       (if (not (:started animation))
         (do
           (swap! animations assoc-in [:animations component :started] true)
-          ;; (set! (.-x (:component animation)) 600)
           (set! (.-x component) (get-in animation [:from :x]))
           (set! (.-y component) (get-in animation [:from :y]))
           )
         (if ( and
               (= (get-in animation [:to :x]) (.-x component))
               (= (get-in animation [:to :y]) (.-y component)))
-          (do
-            (swap! animations update-in [:animations] (fn [anims] (dissoc anims component))))
-          (do (set! (.-x component) (inc (.-x component)))
-              (set! (.-y component) (inc (.-y component))))
-          )
-
-        )
-      )
+          (swap! animations update-in [:animations] (fn [anims] (dissoc anims component)))
+          (let [{next-x :x next-y :y} (move-liniar {:x (.-x component) :y (.-y component)
+                                                    :to-x (get-in animation [:to :x])
+                                                    :to-y (get-in animation [:to :y]) })]
+            (set! (.-x component) next-x)
+            (set! (.-y component) next-y))
+          )))
     (.ticker.add app (fn [_]
                        ;; (js/console.log "0")
                        (doseq [[c a] (:animations @animations)]
