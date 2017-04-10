@@ -85,7 +85,7 @@
   (shape-sprite #(.drawRect %1 %2 %3 (* 1.5 %4) (* 1.5 %4)) {:x x :y y :color c}))
 
 (defn add-actor [init-state]
-  (let [add-actor-sprite (rect-sprite 
+  (let [add-actor-sprite (rect-sprite
                           {:x (:x init-state)
                            :y (:y init-state)
                            :color (:color init-state)})]
@@ -94,7 +94,7 @@
       (set! (.-anchor.x plus-text) 0.5)
       (set! (.-anchor.y plus-text) 0.5)
       (.addChild add-actor-sprite plus-text))
-    
+
     (-> add-actor-sprite
         (draggable)
         (clickable #(put! (:core-chan @state) [:add-new-actor :ok])))
@@ -145,7 +145,7 @@
 
 (defn message-component [init-state]
   (let [message-sprite (js/PIXI.Sprite.fromImage "imgs/message-icon-png-14.png")]
-    (.scale.set message-sprite 0.1)    
+    (.scale.set message-sprite 0.1)
     (.anchor.set message-sprite 0.5)
     (set! (.-interactive message-sprite) true)
     (set! (.-buttonMode message-sprite) true)
@@ -189,7 +189,7 @@
 
     (let [background-sprite (background-sprite width height)]
       (.stage.addChild app background-sprite)
-      (.on background-sprite "pointerdown" (fn [e] 
+      (.on background-sprite "pointerdown" (fn [e]
                                         (js/console.log (.-data.originalEvent.pageX e) , (.-data.originalEvent.pageY e))
                                         (put! core-chan [:canvas-click {:x  (.-data.originalEvent.pageX e) :y (.-data.originalEvent.pageY e)}])
                                         ))
@@ -197,6 +197,42 @@
 
     (def m (component message-component (atom {:x 200 :y 100})))
     (.stage.addChild app m)
+
+    ;; animate sprite line from to
+    (def animations (atom {:animations
+                            {m {
+                                :component m
+                                :started false
+                                :ended false
+                                :from {:x 0 :y 0}
+                                :to {:x 500 :y 500}}}}))
+    (defn next-frame [component animation]
+      ;; (js/console.log component)
+      ;; (js/console.log (pr-str animation))
+      (if (not (:started animation))
+        (do
+          (swap! animations assoc-in [:animations component :started] true)
+          ;; (set! (.-x (:component animation)) 600)
+          (set! (.-x component) (get-in animation [:from :x]))
+          (set! (.-y component) (get-in animation [:from :y]))
+          )
+        (if ( and
+              (= (get-in animation [:to :x]) (.-x component))
+              (= (get-in animation [:to :y]) (.-y component)))
+          (do
+            (swap! animations update-in [:animations] (fn [anims] (dissoc anims component))))
+          (do (set! (.-x component) (inc (.-x component)))
+              (set! (.-y component) (inc (.-y component))))
+          )
+
+        )
+      )
+    (.ticker.add app (fn [_]
+                       ;; (js/console.log "0")
+                       (doseq [[c a] (:animations @animations)]
+                         ;; (js/console.log "1")
+                         (next-frame c a)
+                         )))
 
     (doseq [[pid running_actor_state] (:running-actors @state)]
       (->> (component running-actor running_actor_state)

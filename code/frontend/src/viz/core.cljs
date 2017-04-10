@@ -243,8 +243,6 @@
                    (component-click :main-menu x y))
    })
 
-
-
 ;; Backent channel set-up
 (defonce joined-chan
   (channel/join
