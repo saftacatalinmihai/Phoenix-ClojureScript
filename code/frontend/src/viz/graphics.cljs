@@ -66,6 +66,18 @@
       sprite
       )))
 
+(defn background-sprite [w h]
+  (let [graphics (-> (js/PIXI.Graphics.)
+                     (.beginFill 0x000000)
+                     (.drawRect 0 0 w h)
+                     (.endFill))]
+    (set! (.-boundsPadding graphics) 0)
+    (let [sprite (js/PIXI.Sprite. (.generateTexture graphics))]
+      (set! (.-interactive sprite) true)
+      sprite
+      ))
+  )
+
 (defn thick-border [graphics color]
   (.lineStyle graphics 5 color 1))
 
@@ -177,12 +189,14 @@
   (swap! state assoc-in [:core-chan] core-chan)
   (let [app (js/PIXI.Application. width, height, (clj->js {"antialias" true}))]
     (.appendChild mount_elem (.-view app))
-    (set! (.-stage.interactive app) true)
-    (set! (.-stage.hitArea app) (js/PIXI.Rectangle. 0 0 1000 1000))
-    (.on (.-stage app) "pointerdown" (fn [e] 
-                                       (js/console.log (.-data.originalEvent.pageX e) , (.-data.originalEvent.pageY e))
-                                       (put! core-chan [:canvas-click {:x  (.-data.originalEvent.pageX e) :y (.-data.originalEvent.pageY e)}])
-))
+
+    (let [background-sprite (background-sprite width height)]
+      (.stage.addChild app background-sprite)
+      (.on background-sprite "pointerdown" (fn [e] 
+                                        (js/console.log (.-data.originalEvent.pageX e) , (.-data.originalEvent.pageY e))
+                                        (put! core-chan [:canvas-click {:x  (.-data.originalEvent.pageX e) :y (.-data.originalEvent.pageY e)}])
+                                        ))
+      )
 
     (def m (component message-component (atom {:x 200 :y 100})))
     (.stage.addChild app m)

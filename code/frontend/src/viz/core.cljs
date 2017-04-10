@@ -12,7 +12,7 @@
 
 ;; REAGENT STATE
 (defonce state (r/atom {
-                        :some-menu-opened false
+                        :some-menu-opened {:open false :x 0 :y 0}
                         :main-menu {:x 0 :y 0 :open false}
                         :message-menu {:x 0 :y 0 :open false}
                         :editor {:actor-type ""}
@@ -28,7 +28,7 @@
     :mui-theme (get-mui-theme
                  {:palette {:text-color (color :green600)}})}
    [:div {:style (clj->js {:display (if (= true (get-in @state [:message-menu :open])) "inline-block" "none")})}
-    [ui/paper {:style (clj->js {:margin "16px 32px 16px 0px" :position "absolute" :top (get-in @state [:message-menu :y]) :left (get-in @state [:message-menu :x])})}
+    [ui/paper {:style (clj->js {:margin "16px 32px 16px 32px" :position "absolute" :top (get-in @state [:message-menu :y]) :left (get-in @state [:message-menu :x])})}
      [ui/menu
       [ui/menu-item {:primary-text "1" :right-icon (ic/action-favorite)}]
       [ui/menu-item {:primary-text "2" :right-icon (ic/social-group)}]
@@ -37,6 +37,20 @@
       ]
      ]
     ]])
+
+(defn main-menu []
+  [ui/mui-theme-provider
+   {:mui-theme (get-mui-theme {:palette {:text-color (color :green600)}})}
+   [:div {:style (clj->js {:display (if (= true (get-in @state [:main-menu :open])) "inline-block" "none")})}
+    [ui/paper {:style (clj->js {:margin "16px 32px 16px 32px" :position "absolute" :top (get-in @state [:main-menu :y]) :left (get-in @state [:main-menu :x])})}
+     [ui/menu
+      [ui/menu-item {:primary-text "5" :right-icon (ic/action-favorite)}]
+      [ui/menu-item {:primary-text "6" :right-icon (ic/social-group)}]
+      [ui/menu-item {:primary-text "7"}]
+      [ui/menu-item {:primary-text "8"}]
+      ]]
+    ]
+   ])
 
 ;; Core event channel
 (def core-chan (chan))
@@ -111,6 +125,7 @@
 
 (defn reagent-mount []
   [:div
+   [main-menu]
    [running-actor-menu]
    [slide-out-editor]
    [error-modal]
@@ -155,22 +170,27 @@
    (js/document.querySelector "#pixi-js")
    (- (-> js/window js/jQuery .width) 10) (- (-> js/window js/jQuery .height) 10)))
 
-(defn no-menu-opened? [] (not (get @state :some-menu-opened)))
+(defn no-menu-opened? [] (not (get-in @state [:some-menu-opened :open])))
+(defn some-menu-opened? [] (get-in @state [:some-menu-opened :open]))
 (defn open-component-menu [component-menu x y]
+  (js/console.log (pr-str  "open component" component-menu))
   (swap! state assoc-in [component-menu] {:x x :y y :open true} )
-  (swap! state assoc-in [:some-menu-opened] true)
+  (swap! state assoc-in [:some-menu-opened] {:open true :x x :y y})
 )
-(defn close-other-menues []
+(defn close-other-menues [x y]
   (js/console.log "close others")
   (swap! state assoc-in [:main-menu :open] false)
   (swap! state assoc-in [:message-menu :open] false)
-  (swap! state assoc-in [:some-menu-opened] false)
+  (swap! state assoc-in [:some-menu-opened] {:open false :x x :y y})
 )
-(defn component-click [component-menu x y] 
+(defn menues-eq-xy [m1 m2]
+  (and (= (:x m1) (:x m2))) (= (:y m1) (:y m2)))
+
+(defn component-click [component-menu x y]
+  (js/console.log (pr-str  "click" (get @state component-menu) (get @state :some-menu-opened)))
   (if (no-menu-opened?)
     (open-component-menu component-menu x y)
-    (close-other-menues)))
-
+    (close-other-menues x y)))
 
 ;; Core event channel handlers
 (def handlers

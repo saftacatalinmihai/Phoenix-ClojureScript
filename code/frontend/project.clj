@@ -29,8 +29,7 @@
                          :output-dir "resources/public/js/out"
                          ;; :optimizations :advanced
                          :source-map-timestamp true}
-             }]
-              }
+             }]}
   :figwheel {
              :open-file-command "emacsclient"
              :nrepl-port 7888
