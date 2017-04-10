@@ -32,7 +32,7 @@
      [ui/menu
       [ui/menu-item {:primary-text "1" :right-icon (ic/action-favorite)}]
       [ui/menu-item {:primary-text "2" :right-icon (ic/social-group)}]
-      [ui/menu-item {:primary-text "3"}]
+      [ui/menu-item {:primary-text "3" :on-touch-tap #(js/console.log "touch-tap")}]
       [ui/menu-item {:primary-text "4"}]
       ]
      ]

@@ -70,13 +70,10 @@
   (let [graphics (-> (js/PIXI.Graphics.)
                      (.beginFill 0x000000)
                      (.drawRect 0 0 w h)
-                     (.endFill))]
-    (set! (.-boundsPadding graphics) 0)
-    (let [sprite (js/PIXI.Sprite. (.generateTexture graphics))]
-      (set! (.-interactive sprite) true)
-      sprite
-      ))
-  )
+                     (.endFill))
+        sprite (js/PIXI.Sprite. (.generateTexture graphics))]
+    (set! (.-interactive sprite) true)
+    sprite))
 
 (defn thick-border [graphics color]
   (.lineStyle graphics 5 color 1))
