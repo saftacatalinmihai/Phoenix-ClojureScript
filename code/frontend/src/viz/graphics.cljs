@@ -181,6 +181,50 @@
           ((event-name handlers) event-data))))
     circle))
 
+(defn move-liniar [step-size]
+  (fn [{x :x y :y from-x :from-x from-y :from-y to-x :to-x to-y :to-y}]
+    (let [next-x ((if (< to-x from-x) - +) x step-size)
+          proportion (/ (- next-x from-x) (- to-x from-x))
+          next-y (- from-y (* proportion (- from-y to-y) ))
+          ]
+      (if (or
+           (< (Math.abs (- to-x next-x)) step-size)
+           (< (Math.abs (- to-y next-y)) step-size))
+        {:x to-x :y to-y}
+        {:x next-x :y next-y}
+        ))))
+
+(defn move-decelerated [speed]
+  "Speed should be around 0.01 to 1. 1 means move instantly"
+  (fn [{x :x y :y from-x :from-x from-y :from-y to-x :to-x to-y :to-y}]
+    (let [update-f (fn [to curent] ((if (< to curent) - +) curent (* (Math.abs (- to curent)) speed)))]
+      (if (and
+           ( < (Math.abs (- to-x x)) 1)
+           ( < (Math.abs (- to-y y)) 1)
+           ) {:x to-x :y to-y}
+             {:x (update-f to-x x)
+              :y (update-f to-y y)}))))
+
+(defn next-frame [component animation]
+  (if (not (:started animation))
+    (do
+      (swap! state assoc-in [:animations component :started] true)
+      (set! (.-x component) (get-in animation [:from :x]))
+      (set! (.-y component) (get-in animation [:from :y])))
+    (if (and
+          (= (get-in animation [:to :x]) (.-x component))
+          (= (get-in animation [:to :y]) (.-y component)))
+      (swap! state update-in [:animations] (fn [anims] (dissoc anims component)))
+      (let [{next-x :x next-y :y} ((:anim-function animation) {:x (.-x component)
+                                                               :y (.-y component)
+                                                               :to-x (get-in animation [:to :x])
+                                                               :to-y (get-in animation [:to :y])
+                                                               :from-x (get-in animation [:from :x])
+                                                               :from-y (get-in animation [:from :y])
+                                                               })]
+        (set! (.-x component) next-x)
+        (set! (.-y component) next-y)))))
+
 (defn init[core-chan mount_elem width height]
   (js/console.log "Existing state:", (pr-str state))
   (swap! state assoc-in [:core-chan] core-chan)
@@ -198,45 +242,8 @@
     (def m (component message-component (atom {:x 200 :y 100})))
     (.stage.addChild app m)
 
-    ;; animate sprite line from to
-    (def animations (atom {:animations
-                            {m {
-                                :component m
-                                :started false
-                                :from {:x 0 :y 0}
-                                :to {:x 500 :y 500}}}}))
-
-    (defn move-liniar [{x :x y :y from-x :from-x from-y :from-y to-x :to-x to-y :to-y}]
-      ;; {:x (+ x ( * (- to-x x) 0.01)) :y (+ y (* ( - to-y y) 0.01))}
-      {:x ( + x ( / ( - to-x from-x ) 500 )) :y (+ y ( / ( - to-y from-y) 500)) }
-      )
-    (defn next-frame [component animation]
-      (if (not (:started animation))
-        (do
-          (swap! animations assoc-in [:animations component :started] true)
-          (set! (.-x component) (get-in animation [:from :x]))
-          (set! (.-y component) (get-in animation [:from :y]))
-          )
-        (if ( and
-              (= (get-in animation [:to :x]) (.-x component))
-              (= (get-in animation [:to :y]) (.-y component)))
-          (do 
-            (swap! animations update-in [:animations] (fn [anims] (dissoc anims component)))
-            (js/console.log "Finished")
-            )
-          (let [{next-x :x next-y :y} (move-liniar {:x (.-x component) :y (.-y component)
-                                                    :to-x (get-in animation [:to :x])
-                                                    :to-y (get-in animation [:to :y]) 
-                                                    :from-x (get-in animation [:from :x])
-                                                    :from-y (get-in animation [:from :y]) 
-                                                    })]
-            (set! (.-x component) next-x)
-            (set! (.-y component) next-y))
-          )))
     (.ticker.add app (fn [_]
-                       ;; (js/console.log "0")
-                       (doseq [[c a] (:animations @animations)]
-                         ;; (js/console.log "1")
+                       (doseq [[c a] (:animations @state)]
                          (next-frame c a)
                          )))
 
@@ -259,7 +266,10 @@
                                                   (.stage.addChild app))))
                       :new_actor_type (fn [actor_type]
                                         (swap! state assoc-in [:actor-types actor_type]
-                                               (atom {:type actor_type :x 60 :y (+ 200 (* 120 (get-in @state [:actor-types-number]))) :color (rand-color)}))
+                                               (atom {:type actor_type
+                                                      :x 60
+                                                      :y (+ 200 (* 120 (get-in @state [:actor-types-number])))
+                                                      :color (rand-color)}))
                                         (swap! state update-in [:actor-types-number] inc)
                                         (->> (component actor-type (get-in @state [:actor-types actor_type]))
                                              (.stage.addChild app)))
@@ -272,11 +282,18 @@
                                                (->> (component actor-type (get-in @state [:actor-types type]))
                                                     (.stage.addChild app)))
                                              actor_types))
-                                           (swap! state assoc-in [:actor-types-number] (count actor_types))
-                                           )}]
+                                           (swap! state assoc-in [:actor-types-number] (count actor_types)))
+                      :animation (fn [[component animation]]
+                                       ;; (js/console.log (pr-str component animation))
+                                       (swap! state assoc-in [:animations component] animation))
+                      }]
         (go
           (while true
             (let [[event-name event-data] (<! event-channel)]
               ((event-name handlers) event-data))))
 
+        (put! event-channel [:animation [m {
+                                                :anim-function (move-decelerated 0.1)
+                                                :from {:x 500 :y 200}
+                                                :to {:x 400 :y 300}}]])
         event-channel))))
