@@ -3,7 +3,8 @@
   (:require
    [reagent.core :as r]
    cljsjs.pixi
-   [cljs.core.async :refer [put! chan <! >! timeout close!]]))
+   [cljs.core.async :refer [put! chan <! >! timeout close!]]
+   [viz.animation :as anim]))
 
 (defn rand-color[]
   (rand-int 0xFFFFFF))
@@ -181,50 +182,6 @@
           ((event-name handlers) event-data))))
     circle))
 
-(defn move-liniar [step-size]
-  (fn [{x :x y :y from-x :from-x from-y :from-y to-x :to-x to-y :to-y}]
-    (let [next-x ((if (< to-x from-x) - +) x step-size)
-          proportion (/ (- next-x from-x) (- to-x from-x))
-          next-y (- from-y (* proportion (- from-y to-y) ))
-          ]
-      (if (or
-           (< (Math.abs (- to-x next-x)) step-size)
-           (< (Math.abs (- to-y next-y)) step-size))
-        {:x to-x :y to-y}
-        {:x next-x :y next-y}
-        ))))
-
-(defn move-decelerated [speed]
-  "Speed should be around 0.01 to 1. 1 means move instantly"
-  (fn [{x :x y :y from-x :from-x from-y :from-y to-x :to-x to-y :to-y}]
-    (let [update-f (fn [to curent] ((if (< to curent) - +) curent (* (Math.abs (- to curent)) speed)))]
-      (if (and
-           ( < (Math.abs (- to-x x)) 1)
-           ( < (Math.abs (- to-y y)) 1)
-           ) {:x to-x :y to-y}
-             {:x (update-f to-x x)
-              :y (update-f to-y y)}))))
-
-(defn next-frame [component animation]
-  (if (not (:started animation))
-    (do
-      (swap! state assoc-in [:animations component :started] true)
-      (set! (.-x component) (get-in animation [:from :x]))
-      (set! (.-y component) (get-in animation [:from :y])))
-    (if (and
-          (= (get-in animation [:to :x]) (.-x component))
-          (= (get-in animation [:to :y]) (.-y component)))
-      (swap! state update-in [:animations] (fn [anims] (dissoc anims component)))
-      (let [{next-x :x next-y :y} ((:anim-function animation) {:x (.-x component)
-                                                               :y (.-y component)
-                                                               :to-x (get-in animation [:to :x])
-                                                               :to-y (get-in animation [:to :y])
-                                                               :from-x (get-in animation [:from :x])
-                                                               :from-y (get-in animation [:from :y])
-                                                               })]
-        (set! (.-x component) next-x)
-        (set! (.-y component) next-y)))))
-
 (defn init[core-chan mount_elem width height]
   (js/console.log "Existing state:", (pr-str state))
   (swap! state assoc-in [:core-chan] core-chan)
@@ -244,7 +201,7 @@
 
     (.ticker.add app (fn [_]
                        (doseq [[c a] (:animations @state)]
-                         (next-frame c a)
+                         (anim/next-frame c a state)
                          )))
 
     (doseq [[pid running_actor_state] (:running-actors @state)]
@@ -293,7 +250,7 @@
               ((event-name handlers) event-data))))
 
         (put! event-channel [:animation [m {
-                                                :anim-function (move-decelerated 0.1)
+                                                :anim-function (anim/move-decelerated 0.1)
                                                 :from {:x 500 :y 200}
                                                 :to {:x 400 :y 300}}]])
         event-channel))))
