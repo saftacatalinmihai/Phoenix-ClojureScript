@@ -19,10 +19,10 @@
     (let [update-f (fn [to curent] ((if (< to curent) - +) curent (* (Math.abs (- to curent)) speed)))]
       (if (and
            ( < (Math.abs (- to-x x)) 1)
-           ( < (Math.abs (- to-y y)) 1)
-           ) {:x to-x :y to-y}
-             {:x (update-f to-x x)
-              :y (update-f to-y y)}))))
+           ( < (Math.abs (- to-y y)) 1))
+        {:x to-x :y to-y}
+        {:x (update-f to-x x)
+         :y (update-f to-y y)}))))
 
 (defn next-frame [component animation state]
   (if (not (:started animation))
@@ -31,8 +31,8 @@
       (set! (.-x component) (get-in animation [:from :x]))
       (set! (.-y component) (get-in animation [:from :y])))
     (if (and
-          (= (get-in animation [:to :x]) (.-x component))
-          (= (get-in animation [:to :y]) (.-y component)))
+         (= (get-in animation [:to :x]) (.-x component))
+         (= (get-in animation [:to :y]) (.-y component)))
       (swap! state update-in [:animations] (fn [anims] (dissoc anims component)))
       (let [{next-x :x next-y :y} ((:anim-function animation) {:x (.-x component)
                                                                :y (.-y component)
