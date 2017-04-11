@@ -8,6 +8,7 @@
    [reagent.core :as r]
    [viz.channel :as channel]
    [viz.graphics :as graphics]
+   [viz.running-actor-menu :refer [running-actor-menu]]
    [cljs.core.async :refer [put! chan <!]]))
 
 ;; REAGENT STATE
@@ -15,6 +16,7 @@
                         :some-menu-opened {:open false :x 0 :y 0}
                         :main-menu {:x 0 :y 0 :open false}
                         :message-menu {:x 0 :y 0 :open false}
+                        :running-actor-menu {:x 0 :y 0 :open false :width "225px"}
                         :editor {:actor-type ""}
                         :response {:header "" :value ""}
                         :error ""
@@ -22,28 +24,17 @@
                         :new-actor {:type ""}
                         }))
 
-(defn running-actor-menu []
-  [ui/mui-theme-provider
-   {
-    :mui-theme (get-mui-theme
-                 {:palette {:text-color (color :green600)}})}
-   [:div {:style (clj->js {:display (if (= true (get-in @state [:message-menu :open])) "inline-block" "none")})}
-    [ui/paper {:style (clj->js {:margin "16px 32px 16px 32px" :position "absolute" :top (get-in @state [:message-menu :y]) :left (get-in @state [:message-menu :x])})}
-     [ui/menu
-      [ui/menu-item {:primary-text "1" :right-icon (ic/action-favorite)}]
-      [ui/menu-item {:primary-text "2" :right-icon (ic/social-group)}]
-      [ui/menu-item {:primary-text "3" :on-touch-tap #(js/console.log "touch-tap")}]
-      [ui/menu-item {:primary-text "4"}]
-      ]
-     ]
-    ]])
+;; Core event channel
+(def core-chan (chan))
+(defn raise-event [event-name event-data]
+  (put! core-chan [event-name event-data]))
 
 (defn main-menu []
   [ui/mui-theme-provider
    {:mui-theme (get-mui-theme {:palette {:text-color (color :green600)}})}
    [:div {:style (clj->js {:display (if (= true (get-in @state [:main-menu :open])) "inline-block" "none")})}
     [ui/paper {:style (clj->js {:margin "16px 32px 16px 32px" :position "absolute" :top (get-in @state [:main-menu :y]) :left (get-in @state [:main-menu :x])})}
-     [ui/menu
+     [ui/menu {:auto-width false}
       [ui/menu-item {:primary-text "5" :right-icon (ic/action-favorite)}]
       [ui/menu-item {:primary-text "6" :right-icon (ic/social-group)}]
       [ui/menu-item {:primary-text "7"}]
@@ -51,11 +42,6 @@
       ]]
     ]
    ])
-
-;; Core event channel
-(def core-chan (chan))
-(defn raise-event [event-name event-data]
-  (put! core-chan [event-name event-data]))
 
 ;; Reagent components
 (defn pixi []
@@ -126,7 +112,7 @@
 (defn reagent-mount []
   [:div
    [main-menu]
-   [running-actor-menu]
+   [running-actor-menu core-chan (get @state :running-actor-menu)]
    [slide-out-editor]
    [error-modal]
    [send-message-modal]
@@ -179,8 +165,9 @@
 )
 (defn close-other-menues [x y]
   (js/console.log "close others")
-  (swap! state assoc-in [:main-menu :open] false)
+  (swap! state assoc-in [:main-menu :open] false) 
   (swap! state assoc-in [:message-menu :open] false)
+  (swap! state assoc-in [:running-actor-menu :open] false)
   (swap! state assoc-in [:some-menu-opened] {:open false :x x :y y})
 )
 (defn menues-eq-xy [m1 m2]
@@ -205,8 +192,8 @@
                                       (.setValue editor (get resp "code"))
                                       (.sideNav (js/jQuery ".button-collapse") "show")
                                       )))
-   :open-message-modal (fn [actor]
-                         (swap! state assoc-in [:send_message :to] (:pid actor))
+   :open-message-modal (fn [actor-pid]
+                         (swap! state assoc-in [:send_message :to] actor-pid)
                          (.modal (js/jQuery "#modal-send-message") "open"))
    :add-new-actor (fn [_]
                     (.modal (js/jQuery "#modal-new-actor") "open"))
@@ -241,6 +228,11 @@
    :canvas-click (fn [{x :x y :y}] 
                    (js/console.log "2")
                    (component-click :main-menu x y))
+   :running-actor-click (fn [{x :x y :y pid :pid}]
+                          (js/console.log "3")
+                          (swap! state assoc-in [:running-actor-menu :pid] (:pid pid))
+                          (component-click :running-actor-menu x y)
+                          )
    })
 
 ;; Backent channel set-up

@@ -113,7 +113,7 @@
 
     (-> running-actor-sprite
         (draggable)
-        (clickable #(put! (:core-chan @state) [:open-message-modal (deref (.-state running-actor-sprite))])))))
+        (clickable #(put! (:core-chan @state) [:running-actor-click (deref (.-state running-actor-sprite))])))))
 
 (defn actor-type[init-state]
   (let [actor-type-sprite (circle-sprite
@@ -185,7 +185,7 @@
 
     (let [background-sprite (background-sprite width height)]
       (.stage.addChild app background-sprite)
-      (.on background-sprite "pointerdown" 
+      (.on background-sprite "pointerdown"
            (fn [e]
              (js/console.log (.-data.originalEvent.pageX e) , (.-data.originalEvent.pageY e))
              (put! core-chan [:canvas-click {:x  (.-data.originalEvent.pageX e) :y (.-data.originalEvent.pageY e)}])
@@ -236,7 +236,6 @@
                                              actor_types))
                                            (swap! state assoc-in [:actor-types-number] (count actor_types)))
                       :animation (fn [[component animation]]
-                                   ;; (js/console.log (pr-str component animation))
                                    (swap! state assoc-in [:animations component] animation))
                       }]
         (go
@@ -245,7 +244,7 @@
               ((event-name handlers) event-data))))
 
         (put! event-channel [:animation [m {
-                                            :anim-function (anim/move-decelerated 0.1)
+                                            :anim-function (anim/move-decelerated 0.05)
                                             :from {:x 500 :y 200}
                                             :to {:x 400 :y 300}}]])
         event-channel))))
