@@ -64,8 +64,7 @@
       (set! (.-x sprite) x)
       (set! (.-y sprite) y)
       (set! (.-color sprite) c)
-      sprite
-      )))
+      sprite)))
 
 (defn background-sprite [w h]
   (let [graphics (-> (js/PIXI.Graphics.)
@@ -98,8 +97,7 @@
 
     (-> add-actor-sprite
         (draggable)
-        (clickable #(put! (:core-chan @state) [:add-new-actor :ok])))
-))
+        (clickable #(put! (:core-chan @state) [:add-new-actor :ok])))))
 
 (defn running-actor[init-state]
   (let [running-actor-sprite  (circle-sprite
@@ -115,8 +113,7 @@
 
     (-> running-actor-sprite
         (draggable)
-        (clickable #(put! (:core-chan @state) [:open-message-modal (deref (.-state running-actor-sprite))]))
-)))
+        (clickable #(put! (:core-chan @state) [:open-message-modal (deref (.-state running-actor-sprite))])))))
 
 (defn actor-type[init-state]
   (let [actor-type-sprite (circle-sprite
@@ -141,8 +138,7 @@
                                       (set! (.-dragging this) false)))) )
         (draggable)
         (clickable #(put! (:core-chan @state) [:show-code (:type (deref (.-state actor-type-sprite)))])))
-    actor-type-sprite
-    ))
+    actor-type-sprite))
 
 (defn message-component [init-state]
   (let [message-sprite (js/PIXI.Sprite.fromImage "imgs/message-icon-png-14.png")]
@@ -153,8 +149,7 @@
     (set! (.-x message-sprite) (:x init-state))
     (set! (.-y message-sprite) (:y init-state))
     (draggable message-sprite)
-    (clickable message-sprite #(put! (:core-chan @state) [:message-click {:x (.-x message-sprite ) :y (.-y message-sprite) }])))
-)
+    (clickable message-sprite #(put! (:core-chan @state) [:message-click {:x (.-x message-sprite ) :y (.-y message-sprite) }]))))
 
 (defn component[sprite-constructor state-atom]
   (let [circle     (sprite-constructor @state-atom)
@@ -190,11 +185,11 @@
 
     (let [background-sprite (background-sprite width height)]
       (.stage.addChild app background-sprite)
-      (.on background-sprite "pointerdown" (fn [e]
-                                        (js/console.log (.-data.originalEvent.pageX e) , (.-data.originalEvent.pageY e))
-                                        (put! core-chan [:canvas-click {:x  (.-data.originalEvent.pageX e) :y (.-data.originalEvent.pageY e)}])
-                                        ))
-      )
+      (.on background-sprite "pointerdown" 
+           (fn [e]
+             (js/console.log (.-data.originalEvent.pageX e) , (.-data.originalEvent.pageY e))
+             (put! core-chan [:canvas-click {:x  (.-data.originalEvent.pageX e) :y (.-data.originalEvent.pageY e)}])
+             )))
 
     (def m (component message-component (atom {:x 200 :y 100})))
     (.stage.addChild app m)
@@ -241,8 +236,8 @@
                                              actor_types))
                                            (swap! state assoc-in [:actor-types-number] (count actor_types)))
                       :animation (fn [[component animation]]
-                                       ;; (js/console.log (pr-str component animation))
-                                       (swap! state assoc-in [:animations component] animation))
+                                   ;; (js/console.log (pr-str component animation))
+                                   (swap! state assoc-in [:animations component] animation))
                       }]
         (go
           (while true
@@ -250,7 +245,7 @@
               ((event-name handlers) event-data))))
 
         (put! event-channel [:animation [m {
-                                                :anim-function (anim/move-decelerated 0.1)
-                                                :from {:x 500 :y 200}
-                                                :to {:x 400 :y 300}}]])
+                                            :anim-function (anim/move-decelerated 0.1)
+                                            :from {:x 500 :y 200}
+                                            :to {:x 400 :y 300}}]])
         event-channel))))
