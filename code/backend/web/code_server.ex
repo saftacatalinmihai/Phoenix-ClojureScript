@@ -1,6 +1,6 @@
 defmodule Backend.CodeServer do
   @moduledoc false
-  
+
   use GenServer
 
   def start_link do
@@ -10,7 +10,7 @@ defmodule Backend.CodeServer do
   def get_actor_types do
     GenServer.call(__MODULE__, :get_actor_types)
   end
-  
+
   def new_actor_type(actor_type) do
     GenServer.call(__MODULE__, {:new_actor_type, actor_type})
   end
@@ -42,7 +42,7 @@ defmodule Backend.CodeServer do
 
   def handle_call({:start_actor, actor_type}, _from, state) do
     case :"Elixir.#{actor_type}".start_link do
-      {:ok, pid} -> 
+      {:ok, pid} ->
         IO.inspect pid
         IO.inspect :erlang.trace(pid, true, [:send, :receive, :exiting, :timestamp, {:tracer, Backend.EventStore.get_pid()}])
         {:reply, {:ok, %{:name => actor_type, :pid => to_string(:erlang.pid_to_list(pid))}}, state}
@@ -67,7 +67,7 @@ defmodule Backend.CodeServer do
       {:reply, {:ok, %{:actor_type => actor_type}}, %{:actor_types => actor_types}}
     end
   end
-  
+
   def handle_call({:get_code, actor_type}, _from, state) do
     case File.read("code/#{actor_type}.ex") do
       {:ok, body} ->

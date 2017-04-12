@@ -159,7 +159,6 @@
   (and (= (:x m1) (:x m2))) (= (:y m1) (:y m2)))
 
 (defn component-click [component-menu x y]
-  (js/console.log (pr-str  "click" (get @state component-menu) (get @state :some-menu-opened)))
   (if (no-menu-opened?)
     (open-component-menu component-menu x y)
     (close-other-menues x y)))
@@ -178,7 +177,6 @@
                                       (.sideNav (js/jQuery ".button-collapse") "show")
                                       )))
    :open-message-modal (fn [actor-pid]
-                         (js/console.log actor-pid)
                          (swap! state assoc-in [:send_message :to] actor-pid)
                          (.modal (js/jQuery "#modal-send-message") "open"))
    :add-new-actor (fn [_]
@@ -210,9 +208,9 @@
                                          (.modal (js/jQuery "#error-modal") "open"))))
    :message-click (fn [{x :x y :y}]
                     (js/console.log "1")
-                    (component-click :message-menu x y))
+                    ;; (component-click :message-menu x y)
+                    )
    :canvas-click (fn [{x :x y :y}] 
-                   (js/console.log "2")
                    (component-click :main-menu x y))
    :running-actor-click (fn [{x :x y :y pid :pid}]
                           (swap! (:running-actor-menu @state) assoc-in [:pid] pid)

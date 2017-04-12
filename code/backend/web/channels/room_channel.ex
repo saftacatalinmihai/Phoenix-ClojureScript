@@ -8,7 +8,7 @@ defmodule Backend.RoomChannel do
 
     def event_pusher(socket) do
       receive do
-        ev -> 
+        ev ->
           # IO.puts "<Ev>"
           # IO.inspect ev
           # IO.puts "<Ev/>"
@@ -30,9 +30,9 @@ defmodule Backend.RoomChannel do
     end
 
     def handle_info(:after_join, socket) do
-      spawn( fn -> 
+      spawn( fn ->
         Backend.EventStore.register_watcher(self())
-        event_pusher(socket) 
+        event_pusher(socket)
       end)
       {:noreply, socket}
     end
@@ -64,7 +64,8 @@ defmodule Backend.RoomChannel do
 
     def handle_in("send_msg", %{"to" => pid, "msg" => msg}, socket) do
       IO.puts "send msg"
-      IO.inspect pid, msg
+      IO.inspect pid
+      IO.inspect msg
       {:reply, Backend.CodeServer.send_msg(pid, msg), socket}
     end
 
