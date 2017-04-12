@@ -64,6 +64,7 @@ defmodule Backend.RoomChannel do
 
     def handle_in("send_msg", %{"to" => pid, "msg" => msg}, socket) do
       IO.puts "send msg"
+      IO.inspect pid, msg
       {:reply, Backend.CodeServer.send_msg(pid, msg), socket}
     end
 

@@ -113,7 +113,11 @@
 
     (-> running-actor-sprite
         (draggable)
-        (clickable #(put! (:core-chan @state) [:running-actor-click (deref (.-state running-actor-sprite))])))))
+        (clickable #( do
+                      (js/console.log "123" (pr-str (deref (.-state running-actor-sprite))))
+                      (put! (:core-chan @state) [:running-actor-click (deref (.-state running-actor-sprite))])
+
+                          )))))
 
 (defn actor-type[init-state]
   (let [actor-type-sprite (circle-sprite
@@ -152,7 +156,7 @@
     (clickable message-sprite #(put! (:core-chan @state) [:message-click {:x (.-x message-sprite ) :y (.-y message-sprite) }]))))
 
 (defn component[sprite-constructor state-atom]
-  (let [circle     (sprite-constructor @state-atom)
+  (let [component     (sprite-constructor @state-atom)
         event-chan (chan)
         handlers   {:update-xy (fn[{x :x y :y}]
                                  (swap! state-atom
@@ -163,19 +167,19 @@
                                              (assoc-in
                                               [:y]
                                               y))))}]
-    (set! (.-state circle) state-atom)
-    (set! (.-eventChan circle) event-chan)
-    (set! (.-eventHandlers circle) handlers)
+    (set! (.-state component) state-atom)
+    (set! (.-eventChan component) event-chan)
+    (set! (.-eventHandlers component) handlers)
     (add-watch state-atom :component
                (fn [key atom old-state {x :x y :y color :color}]
-                 (set! (.-x circle) x)
-                 (set! (.-y circle) y)
-                 (set! (.-color circle) color)))
+                 (set! (.-x component) x)
+                 (set! (.-y component) y)
+                 (set! (.-color component) color)))
     (go
       (while true
         (let [[event-name event-data] (<! event-chan)]
           ((event-name handlers) event-data))))
-    circle))
+    component))
 
 (defn init[core-chan mount_elem width height]
   (js/console.log "Existing state:", (pr-str state))

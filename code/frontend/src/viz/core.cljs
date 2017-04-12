@@ -8,15 +8,14 @@
    [reagent.core :as r]
    [viz.channel :as channel]
    [viz.graphics :as graphics]
-   [viz.running-actor-menu :refer [running-actor-menu]]
+   [viz.menues :refer [running-actor-menu main-menu]]
    [cljs.core.async :refer [put! chan <!]]))
 
 ;; REAGENT STATE
 (defonce state (r/atom {
                         :some-menu-opened {:open false :x 0 :y 0}
-                        :main-menu {:x 0 :y 0 :open false}
-                        :message-menu {:x 0 :y 0 :open false}
-                        :running-actor-menu {:x 0 :y 0 :open false :width "225px"}
+                        :main-menu (r/atom {:x 0 :y 0 :open false})
+                        :running-actor-menu (r/atom {:x 5 :y 5 :open false})
                         :editor {:actor-type ""}
                         :response {:header "" :value ""}
                         :error ""
@@ -28,20 +27,6 @@
 (def core-chan (chan))
 (defn raise-event [event-name event-data]
   (put! core-chan [event-name event-data]))
-
-(defn main-menu []
-  [ui/mui-theme-provider
-   {:mui-theme (get-mui-theme {:palette {:text-color (color :green600)}})}
-   [:div {:style (clj->js {:display (if (= true (get-in @state [:main-menu :open])) "inline-block" "none")})}
-    [ui/paper {:style (clj->js {:margin "16px 32px 16px 32px" :position "absolute" :top (get-in @state [:main-menu :y]) :left (get-in @state [:main-menu :x])})}
-     [ui/menu {:auto-width false}
-      [ui/menu-item {:primary-text "5" :right-icon (ic/action-favorite)}]
-      [ui/menu-item {:primary-text "6" :right-icon (ic/social-group)}]
-      [ui/menu-item {:primary-text "7"}]
-      [ui/menu-item {:primary-text "8"}]
-      ]]
-    ]
-   ])
 
 ;; Reagent components
 (defn pixi []
@@ -111,8 +96,8 @@
 
 (defn reagent-mount []
   [:div
-   [main-menu]
-   [running-actor-menu core-chan (get @state :running-actor-menu)]
+   [main-menu core-chan (:main-menu @state)]
+   [running-actor-menu core-chan (:running-actor-menu @state)]
    [slide-out-editor]
    [error-modal]
    [send-message-modal]
@@ -160,14 +145,14 @@
 (defn some-menu-opened? [] (get-in @state [:some-menu-opened :open]))
 (defn open-component-menu [component-menu x y]
   (js/console.log (pr-str  "open component" component-menu))
-  (swap! state assoc-in [component-menu] {:x x :y y :open true} )
+  (js/console.log (pr-str (get @state component-menu)))
+  (swap! (get @state component-menu) #(-> % (assoc :x x :y y :open true)))
   (swap! state assoc-in [:some-menu-opened] {:open true :x x :y y})
 )
 (defn close-other-menues [x y]
   (js/console.log "close others")
-  (swap! state assoc-in [:main-menu :open] false) 
-  (swap! state assoc-in [:message-menu :open] false)
-  (swap! state assoc-in [:running-actor-menu :open] false)
+  (swap! (:main-menu @state) assoc-in [:open] false)
+  (swap! (:running-actor-menu @state) assoc-in [:open] false)
   (swap! state assoc-in [:some-menu-opened] {:open false :x x :y y})
 )
 (defn menues-eq-xy [m1 m2]
@@ -193,6 +178,7 @@
                                       (.sideNav (js/jQuery ".button-collapse") "show")
                                       )))
    :open-message-modal (fn [actor-pid]
+                         (js/console.log actor-pid)
                          (swap! state assoc-in [:send_message :to] actor-pid)
                          (.modal (js/jQuery "#modal-send-message") "open"))
    :add-new-actor (fn [_]
@@ -229,10 +215,8 @@
                    (js/console.log "2")
                    (component-click :main-menu x y))
    :running-actor-click (fn [{x :x y :y pid :pid}]
-                          (js/console.log "3")
-                          (swap! state assoc-in [:running-actor-menu :pid] (:pid pid))
-                          (component-click :running-actor-menu x y)
-                          )
+                          (swap! (:running-actor-menu @state) assoc-in [:pid] pid)
+                          (component-click :running-actor-menu x y))
    })
 
 ;; Backent channel set-up
