@@ -54,6 +54,22 @@
    [:h5 "Error"]
    [:p {:id "#code-error-modal"} (:error @state)]])
 
+(defn input-dialog [event-channel state]
+  (let [value (atom "")]
+    [ui/mui-theme-provider
+     {:mui-theme (get-mui-theme
+                  {:palette {:text-color (color :green600)}})}
+     [:div 
+      [ui/dialog {:title (:title @state)
+                  :actions [(r/as-element [ui/flat-button {:label "Cancel" :primary true :on-touch-tap #(js/console.log "tap Cancel")}])
+                            (r/as-element [ui/flat-button {:label "Submit" :primary true :on-touch-tap #(js/console.log (pr-str @value))}])]
+                  :open (:open @state)}
+       [ui/text-field {
+                       :hint-text "Hint"
+                       :default-value @value
+                       :on-change #(reset! value %2)
+                       }]]]]))
+
 (defn bottom-input-modal [header label id state-key-list on-enter]
   [:div {:id (str "modal-" id) :class "modal bottom-sheet"}
    [:div {:class "modal-content"}
@@ -98,6 +114,7 @@
   [:div
    [main-menu core-chan (:main-menu @state)]
    [running-actor-menu core-chan (:running-actor-menu @state)]
+   [input-dialog core-chan (r/atom {:title "A" :text "A" :action #(js/console.log "A") :open true})]
    [slide-out-editor]
    [error-modal]
    [send-message-modal]
