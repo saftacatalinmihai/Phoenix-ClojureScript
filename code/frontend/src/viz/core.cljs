@@ -55,9 +55,15 @@
    [:h5 "Error"]
    [:p {:id "#code-error-modal"} (:error @state)]])
 
+(defn on-enter [e f]
+  (if (= 13 (.-charCode e)) (f)))
+
 (defn input-dialog [event-channel state]
   (js/console.log state)
-  (let [value (atom "")]
+  (let [value (atom "")
+        send-message (fn []
+                       (put! event-channel [:send-actor-message @value])
+                       (swap! state assoc :open false))]
     [ui/mui-theme-provider
      {:mui-theme (get-mui-theme
                   {:palette {:text-color (color :green600)}})}
@@ -67,17 +73,16 @@
                              [ui/flat-button
                               {:label "Submit"
                                :primary true
-                               :on-touch-tap #(do
-                                                (put! event-channel [:send-actor-message @value])
-                                                (put! event-channel [:close-input-dialog (:id @state)])
-                                                )}])]
+                               :on-touch-tap send-message}])]
                   :open (:open @state)
-                  :on-request-close #(put! event-channel [:close-input-dialog (:id @state)])
+                  :on-request-close #(swap! state assoc :open false)
                   }
        [ui/text-field {
+                       :id "input-dialog"
                        :hint-text ""
                        :default-value @value
                        :on-change #(reset! value %2)
+                       :on-key-press (fn [e] (on-enter e send-message))
                        }]]]]))
 
 (defn bottom-input-modal [header label id state-key-list on-enter]
