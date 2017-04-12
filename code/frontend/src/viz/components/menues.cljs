@@ -22,7 +22,7 @@
      [ui/menu-item {
                     :primary-text "Send Message" 
                     :right-icon (ic/communication-message)
-                    :on-touch-tap #( put! event-channel [:open-message-modal (get @state :pid)])
+                    :on-touch-tap #( put! event-channel [:open-message-input (get @state :pid)])
                     }]
      [ui/menu-item {:primary-text "View State" :right-icon (ic/hardware-memory)}]
      [ui/menu-item {:primary-text "View Message Log" :right-icon (ic/action-list)}]

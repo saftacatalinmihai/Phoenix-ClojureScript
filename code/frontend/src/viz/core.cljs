@@ -13,6 +13,7 @@
 
 ;; REAGENT STATE
 (defonce state (r/atom {
+                        :message-input-dialog (r/atom {:id :message-input-dialog :title "Message" :open false} )
                         :some-menu-opened {:open false :x 0 :y 0}
                         :main-menu (r/atom {:x 0 :y 0 :open false})
                         :running-actor-menu (r/atom {:x 5 :y 5 :open false})
@@ -39,33 +40,42 @@
    [:a {:href "#" :data-activates "slide-out" :class "button-collapse"}]])
 
 (defn error-modal []
-  [:div 
+  [:div
    [:raised-button {:label "Dialog" :on-touch-tap (fn [event value]
                                                     (js/console.log event)
                                                     (js/console.log value)
                                                     (swap! state assoc-in [:error-open] true)
                                                     )}]]
   [:dialog {
-            :id "error-modal" 
+            :id "error-modal"
             :title "Error"
             :open (get @state :error-open)
-            :class (str "modal bottom-sheet") 
+            :class (str "modal bottom-sheet")
             }
    [:h5 "Error"]
    [:p {:id "#code-error-modal"} (:error @state)]])
 
 (defn input-dialog [event-channel state]
+  (js/console.log state)
   (let [value (atom "")]
     [ui/mui-theme-provider
      {:mui-theme (get-mui-theme
                   {:palette {:text-color (color :green600)}})}
-     [:div 
+     [:div
       [ui/dialog {:title (:title @state)
-                  :actions [(r/as-element [ui/flat-button {:label "Cancel" :primary true :on-touch-tap #(js/console.log "tap Cancel")}])
-                            (r/as-element [ui/flat-button {:label "Submit" :primary true :on-touch-tap #(js/console.log (pr-str @value))}])]
-                  :open (:open @state)}
+                  :actions [(r/as-element
+                             [ui/flat-button
+                              {:label "Submit"
+                               :primary true
+                               :on-touch-tap #(do
+                                                (put! event-channel [:send-actor-message @value])
+                                                (put! event-channel [:close-input-dialog (:id @state)])
+                                                )}])]
+                  :open (:open @state)
+                  :on-request-close #(put! event-channel [:close-input-dialog (:id @state)])
+                  }
        [ui/text-field {
-                       :hint-text "Hint"
+                       :hint-text ""
                        :default-value @value
                        :on-change #(reset! value %2)
                        }]]]]))
@@ -114,7 +124,7 @@
   [:div
    [main-menu core-chan (:main-menu @state)]
    [running-actor-menu core-chan (:running-actor-menu @state)]
-   [input-dialog core-chan (r/atom {:title "A" :text "A" :action #(js/console.log "A") :open true})]
+   [input-dialog core-chan (:message-input-dialog @state)]
    [slide-out-editor]
    [error-modal]
    [send-message-modal]
@@ -193,21 +203,22 @@
                                       (.setValue editor (get resp "code"))
                                       (.sideNav (js/jQuery ".button-collapse") "show")
                                       )))
-   :open-message-modal (fn [actor-pid]
+   :open-message-input (fn [actor-pid]
                          (swap! state assoc-in [:send_message :to] actor-pid)
-                         (.modal (js/jQuery "#modal-send-message") "open"))
+                         (swap! (:message-input-dialog @state) assoc :open true)
+                         )
    :add-new-actor (fn [_]
                     (.modal (js/jQuery "#modal-new-actor") "open"))
    :send-actor-message (fn [msg]
                          (js/console.log (pr-str msg))
-                         (channel/push "send_msg" msg
+                         (channel/push "send_msg" {:to (get-in @state [:send_message :to]) :msg msg}
                                        (fn [resp]
                                          (swap! state assoc-in [:response] {:value (pr-str resp) :header "Response"})
                                          (.modal (js/jQuery "#modal-resp") "open"))
-                                       (fn [err] 
+                                       (fn [err]
                                          (swap! state assoc-in [:error] err)
                                          (.modal (js/jQuery "#error-modal") "open"))))
-   :new_actor_type (fn [msg] 
+   :new_actor_type (fn [msg]
                      (channel/push "new_actor" msg
                                    (fn [resp]
                                      (swap! state assoc-in [:response :value] (pr-str resp))
@@ -227,11 +238,14 @@
                     (js/console.log "1")
                     ;; (component-click :message-menu x y)
                     )
-   :canvas-click (fn [{x :x y :y}] 
+   :canvas-click (fn [{x :x y :y}]
                    (component-click :main-menu x y))
    :running-actor-click (fn [{x :x y :y pid :pid}]
                           (swap! (:running-actor-menu @state) assoc-in [:pid] pid)
                           (component-click :running-actor-menu x y))
+   :open-input-dialog (fn [id] (swap! (id @state) assoc :open true))
+   :close-input-dialog (fn [id]
+                         (swap! (id @state) assoc :open false ))
    })
 
 ;; Backent channel set-up
@@ -245,5 +259,3 @@
   (while true
     (let [[event-name event-data] (<! core-chan)]
       ((event-name handlers) event-data))))
-
-
