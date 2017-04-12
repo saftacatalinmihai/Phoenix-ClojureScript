@@ -158,15 +158,7 @@
 (defn component[sprite-constructor state-atom]
   (let [component     (sprite-constructor @state-atom)
         event-chan (chan)
-        handlers   {:update-xy (fn[{x :x y :y}]
-                                 (swap! state-atom
-                                        #(-> %
-                                             (assoc-in
-                                              [:x]
-                                              x)
-                                             (assoc-in
-                                              [:y]
-                                              y))))}]
+        handlers   {:update-xy (fn[{x :x y :y}] (swap! state-atom #(-> % (assoc :x x :y y))))}]
     (set! (.-state component) state-atom)
     (set! (.-eventChan component) event-chan)
     (set! (.-eventHandlers component) handlers)
