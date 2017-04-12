@@ -8,7 +8,7 @@
    [reagent.core :as r]
    [viz.channel :as channel]
    [viz.graphics :as graphics]
-   [viz.menues :refer [running-actor-menu main-menu]]
+   [viz.menues :as m]
    [cljs.core.async :refer [put! chan <!]]))
 
 ;; REAGENT STATE
@@ -59,7 +59,6 @@
   (if (= 13 (.-charCode e)) (f)))
 
 (defn input-dialog [event-channel state]
-  (js/console.log state)
   (let [value (atom "")
         send-message (fn []
                        (put! event-channel [:send-actor-message @value])
@@ -84,6 +83,8 @@
                        :on-change #(reset! value %2)
                        :on-key-press (fn [e] (on-enter e send-message))
                        }]]]]))
+
+(defn response-dialog [] 1)
 
 (defn bottom-input-modal [header label id state-key-list on-enter]
   [:div {:id (str "modal-" id) :class "modal bottom-sheet"}
@@ -127,8 +128,8 @@
 
 (defn reagent-mount []
   [:div
-   [main-menu core-chan (:main-menu @state)]
-   [running-actor-menu core-chan (:running-actor-menu @state)]
+   [m/main-menu core-chan (:main-menu @state)]
+   [m/running-actor-menu core-chan (:running-actor-menu @state)]
    [input-dialog core-chan (:message-input-dialog @state)]
    [slide-out-editor]
    [error-modal]
@@ -173,27 +174,10 @@
    (js/document.querySelector "#pixi-js")
    (- (-> js/window js/jQuery .width) 10) (- (-> js/window js/jQuery .height) 10)))
 
-(defn no-menu-opened? [] (not (get-in @state [:some-menu-opened :open])))
-(defn some-menu-opened? [] (get-in @state [:some-menu-opened :open]))
-(defn open-component-menu [component-menu x y]
-  (js/console.log (pr-str  "open component" component-menu))
-  (js/console.log (pr-str (get @state component-menu)))
-  (swap! (get @state component-menu) #(-> % (assoc :x x :y y :open true)))
-  (swap! state assoc-in [:some-menu-opened] {:open true :x x :y y})
-)
-(defn close-other-menues [x y]
-  (js/console.log "close others")
-  (swap! (:main-menu @state) assoc-in [:open] false)
-  (swap! (:running-actor-menu @state) assoc-in [:open] false)
-  (swap! state assoc-in [:some-menu-opened] {:open false :x x :y y})
-)
-(defn menues-eq-xy [m1 m2]
-  (and (= (:x m1) (:x m2))) (= (:y m1) (:y m2)))
-
 (defn component-click [component-menu x y]
-  (if (no-menu-opened?)
-    (open-component-menu component-menu x y)
-    (close-other-menues x y)))
+  (if (m/no-menu-opened? state)
+    (m/open-component-menu state component-menu x y)
+    (m/close-other-menues state x y))) 
 
 ;; Core event channel handlers
 (def handlers
