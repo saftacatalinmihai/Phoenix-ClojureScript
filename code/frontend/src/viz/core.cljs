@@ -18,28 +18,28 @@
 
 ;; REAGENT STATE
 (defonce state (r/atom {
-                        :message-input-dialog (r/atom {:id :message-input-dialog 
-                                                       :title "Message" 
+                        :message-input-dialog (r/atom {:id :message-input-dialog
+                                                       :title "Message"
                                                        :open false
                                                        :action (fn [st value]
                                                                  (put! core-chan [:send-actor-message value])
                                                                  (swap! st assoc :open false))
                                                        })
-                        :add-actor-input-dialog (r/atom {:id :message-input-dialog 
+                        :add-actor-input-dialog (r/atom {:id :message-input-dialog
                                                          :title "Add actor"
                                                          :open false
                                                          :action (fn [st value]
                                                                    (put! core-chan [:new_actor_type value])
                                                                    (swap! st assoc :open false))
                                                          })
-                        :some-menu-opened {:open false :x 0 :y 0}
+                        :some-menu-opened (r/atom {:open false :x 0 :y 0})
                         :main-menu (r/atom {:x 0 :y 0 :open false})
                         :running-actor-menu (r/atom {:x 5 :y 5 :open false})
                         :editor (r/atom {:actor-type "" :open false})
-                        :response {:header "" :value ""}
-                        :error ""
-                        :send_message {:to "" :msg ""}
-                        :new-actor {:type ""}
+                        :response (r/atom {:header "Response" :value "" :open false :color (color :green600)})
+                        :error (r/atom {:header "Error" :value "" :open false :color (color :red500)})
+                        :send_message (r/atom {:to "" :msg ""})
+                        :new-actor (r/atom {:type ""})
                         }))
 
 ;; Reagent components
@@ -58,22 +58,6 @@
     [:div {:id "editor"}]
     ]]
   )
-
-(defn error-modal []
-  [:div
-   [:raised-button {:label "Dialog" :on-touch-tap (fn [event value]
-                                                    (js/console.log event)
-                                                    (js/console.log value)
-                                                    (swap! state assoc-in [:error-open] true)
-                                                    )}]]
-  [:dialog {
-            :id "error-modal"
-            :title "Error"
-            :open (get @state :error-open)
-            :class (str "modal bottom-sheet")
-            }
-   [:h5 "Error"]
-   [:p {:id "#code-error-modal"} (:error @state)]])
 
 (defn on-enter [e f]
   (if (= 13 (.-charCode e)) (f)))
@@ -99,14 +83,22 @@
                        :on-key-press (fn [e] (on-enter e #((@state :action) state @value)))
                        }]]]]))
 
-(defn response-dialog [] 1)
-
-(defn bottom-modal-resp [{header :header value :value}]
-  [:div {:id (str "modal-resp") :class "modal bottom-sheet"}
-   [:div {:class "modal-content"}
-    [:h4 header]
-    [:textarea
-     {:disabled true :value value}]]])
+(defn bottom-resp [state]
+  [ui/mui-theme-provider {get-mui-theme {:palette {:text-color (color :green600)}
+                                         }}
+   [ui/paper {:style (clj->js
+                      {:display (if (= true (get @state :open)) "inline-block" "none")
+                       :position "absolute"
+                       :bottom "0px"
+                       :width "100%"})
+              }
+    [ui/text-field {:id "response"
+                    :full-width true
+                    :value (@state :value)
+                    :underline-style {:border-color (@state :color)}
+                    }]]
+   ]
+)
 
 (defn reagent-mount []
   [:div
@@ -115,8 +107,8 @@
    [input-dialog core-chan (:message-input-dialog @state)]
    [input-dialog core-chan (:add-actor-input-dialog @state)]
    [slide-out-editor core-chan (@state :editor)]
-   [error-modal]
-   [bottom-modal-resp (get-in @state [:response] )]
+   [bottom-resp (@state :response)]
+   [bottom-resp (@state :error)]
    ])
 
 (r/render [reagent-mount]
@@ -130,8 +122,6 @@
           (clj->js
            {:menuWidth (/ (-> js/window js/jQuery .width) 2)
             :edge      'right'}))
-
-(.modal (js/jQuery ".modal"))
 
 ;; Editor set-up
 (def editor (js/ace.edit "editor"))
@@ -158,7 +148,21 @@
 (defn component-click [component-menu x y]
   (if (m/no-menu-opened? state)
     (m/open-component-menu state component-menu x y)
-    (m/close-other-menues state x y))) 
+    (m/close-other-menues state x y)))
+
+(defn close-extra-components []
+  (doseq [kv @state]
+    (let [v (val kv)]
+      (if (and
+           (not= (key kv) :some-menu-opened)
+           (not= (key kv) :main-menu)
+           (contains? @v :open)
+           (@v :open))
+        (do
+          (js/console.log "!!")
+          (js/console.log (pr-str v))
+          (js/console.log (pr-str (key kv)))
+          (swap! v assoc :open false))))))
 
 ;; Core event channel handlers
 (def handlers
@@ -174,40 +178,44 @@
                                       ;; (.sideNav (js/jQuery ".button-collapse") "show")
                                       )))
    :open-message-input (fn [actor-pid]
-                         (swap! state assoc-in [:send_message :to] actor-pid)
+                         (swap! (:send_message @state) assoc :to actor-pid)
                          (swap! (:message-input-dialog @state) assoc :open true)
                          )
    :open-new-actor-input (fn [_]
                            (swap! (:add-actor-input-dialog @state) assoc :open true))
    :send-actor-message (fn [msg]
-                         (channel/push "send_msg" {:to (get-in @state [:send_message :to]) :msg msg}
+                         (channel/push "send_msg" {:to ((deref (@state :send_message)) :to) :msg msg}
                                        (fn [resp]
-                                         (swap! state assoc-in [:response] {:value (pr-str resp) :header "Response"})
-                                         (.modal (js/jQuery "#modal-resp") "open"))
+                                         (js/console.log (pr-str resp))
+                                         (swap! (:response @state) assoc :open true :value (pr-str resp) :header "Response")
+                                         )
                                        (fn [err]
-                                         (swap! state assoc-in [:error] err)
-                                         (.modal (js/jQuery "#error-modal") "open"))))
+                                         (js/console.log (pr-str err))
+                                         (swap! (@state :error) assoc :value (pr-str err) :open true)
+                                         )))
    :new_actor_type (fn [actor_type]
                      (channel/push "new_actor" {:name actor_type}
                                    (fn [resp]
-                                     (swap! state assoc-in [:response :value] (pr-str resp))
+                                     (swap! (@state :response) assoc :value (pr-str resp))
                                      (put! core-chan [:show-code (get resp "actor_type")])
                                      (put! graphics-event-chan [:new_actor_type (get resp "actor_type")])
                                      )))
    :update_actor_code (fn [actor_type]
                         (channel/push "update_actor" {:name actor_type :actor_code (.getValue editor)}
                                       #(do
-                                         (.modal (js/jQuery "#error-modal") "close")
+                                         (swap! (@state :error) assoc :open false)
                                          (js/Materialize.toast "Code saved" 4000 "green"))
                                       #(do
-                                         (swap! state assoc-in [:error] %)
-                                         (.modal (js/jQuery "#error-modal") "open"))))
+                                         (swap! (@state :error) assoc :value (pr-str %) :open true))))
    :message-click (fn [{x :x y :y}]
                     (js/console.log "1")
                     ;; (component-click :message-menu x y)
                     )
    :canvas-click (fn [{x :x y :y}]
-                   (component-click :main-menu x y))
+                   ;; (if ((deref (@state :main-menu)) :open))
+                   (close-extra-components)
+                   (component-click :main-menu x y)
+                   )
    :running-actor-click (fn [{x :x y :y pid :pid}]
                           (swap! (:running-actor-menu @state) assoc-in [:pid] pid)
                           (component-click :running-actor-menu x y))

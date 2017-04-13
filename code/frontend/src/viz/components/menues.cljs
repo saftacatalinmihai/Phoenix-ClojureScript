@@ -7,19 +7,20 @@
    [cljs.core.async :refer [put! chan <!]]
    ))
 
-(defn no-menu-opened? [state] (not (get-in @state [:some-menu-opened :open])))
-(defn some-menu-opened? [state] (get-in @state [:some-menu-opened :open]))
+(defn some-menu-opened? [state]
+  ((deref (@state :some-menu-opened)) :open))
+(defn no-menu-opened? [state] (not (some-menu-opened? state)))
 (defn open-component-menu [state component-menu x y]
-  ;; (js/console.log (pr-str  "open component" component-menu))
-  ;; (js/console.log (pr-str (get @state component-menu)))
+  (js/console.log (pr-str  "open component" component-menu))
+  (js/console.log (pr-str (get @state component-menu)))
   (swap! (get @state component-menu) #(-> % (assoc :x x :y y :open true)))
-  (swap! state assoc-in [:some-menu-opened] {:open true :x x :y y})
+  (swap! (:some-menu-opened @state) assoc :open true :x x :y y)
 )
 (defn close-other-menues [state x y]
-  ;; (js/console.log "close others")
+  (js/console.log "close others")
   (swap! (:main-menu @state) assoc-in [:open] false)
   (swap! (:running-actor-menu @state) assoc-in [:open] false)
-  (swap! state assoc-in [:some-menu-opened] {:open false :x x :y y})
+  (swap! (:some-menu-opened @state) assoc :open false :x x :y y)
 )
 (defn menues-eq-xy [m1 m2]
   (and (= (:x m1) (:x m2))) (= (:y m1) (:y m2)))
