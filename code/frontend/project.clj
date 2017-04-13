@@ -4,12 +4,12 @@
                  [org.clojure/core.async "0.3.442"]
                  [reagent "0.6.1" :exclusions [org.clojure/tools.reader cljsjs/react cljsjs/react-dom]]
                  [cljsjs/codemirror "5.24.0-1"]
-                 ;; [cljsjs/material-ui "0.17.1-0"]
                  [cljs-react-material-ui "0.2.39"]
                  [cljsjs/phoenix "1.2.0-0"]
                  [cljsjs/jquery "2.2.4-0"]
                  [cljsjs/pixi "4.4.3-0"]
-                 ;; [cljsjs/ace "1.2.6-0"]
+                 [cljsjs/codemirror "5.24.0-1"]
+                 [cljsjs/jquery "2.2.4-0"]
                  ]
   :plugins [[lein-figwheel "0.5.8"]
             [refactor-nrepl "2.2.0"]
@@ -27,7 +27,7 @@
                          :asset-path "js/out"
                          :output-to "resources/public/js/main.js"
                          :output-dir "resources/public/js/out"
-                         ;; :optimizations :advanced
+                         :optimizations :advanced
                          :source-map-timestamp true}
              }]}
   :figwheel {

@@ -5,6 +5,8 @@
    [cljs-react-material-ui.core :refer [get-mui-theme color]]
    [cljs-react-material-ui.reagent :as ui]
    [cljs-react-material-ui.icons :as ic]
+   [cljsjs.codemirror]
+   [cljsjs.jquery]
    [reagent.core :as r]
    [viz.channel :as channel]
    [viz.graphics :as graphics]
@@ -17,38 +19,43 @@
   (put! core-chan [event-name event-data]))
 
 ;; REAGENT STATE
-(defonce state (r/atom {
-                        :message-input-dialog (r/atom {:id :message-input-dialog
-                                                       :title "Message"
-                                                       :open false
-                                                       :action (fn [st value]
-                                                                 (put! core-chan [:send-actor-message value])
-                                                                 (swap! st assoc :open false))
-                                                       })
-                        :add-actor-input-dialog (r/atom {:id :message-input-dialog
-                                                         :title "Add actor"
-                                                         :open false
-                                                         :action (fn [st value]
-                                                                   (put! core-chan [:new_actor_type value])
-                                                                   (swap! st assoc :open false))
-                                                         })
-                        :some-menu-opened (r/atom {:open false :x 0 :y 0})
-                        :main-menu (r/atom {:x 0 :y 0 :open false})
-                        :running-actor-menu (r/atom {:x 5 :y 5 :open false})
-                        :editor (r/atom {:actor-type "" :open false})
-                        :response (r/atom {:header "Response" :value "" :open false :color (color :green600)})
-                        :error (r/atom {:header "Error" :value "" :open false :color (color :red500)})
-                        :send_message (r/atom {:to "" :msg ""})
-                        :new-actor (r/atom {:type ""})
-                        :snackbar (r/atom {:message "" :open false})
-                        }))
+(defonce state
+  (r/atom
+   {
+    :message-input-dialog (r/atom
+                           {:id :message-input-dialog
+                            :title "Message"
+                            :open false
+                            :action (fn [st value]
+                                      (put! core-chan [:send-actor-message value])
+                                      (swap! st assoc :open false))
+                            })
+    :add-actor-input-dialog (r/atom
+                             {:id :message-input-dialog
+                              :title "Add actor"
+                              :open false
+                              :action (fn [st value]
+                                        (put! core-chan [:new_actor_type value])
+                                        (swap! st assoc :open false))
+                              })
+    :some-menu-opened (r/atom {:open false :x 0 :y 0})
+    :main-menu (r/atom {:x 0 :y 0 :open false})
+    :running-actor-menu (r/atom {:x 5 :y 5 :open false})
+    :editor (r/atom {:actor-type "" :open false :code ""})
+    :response (r/atom
+               {:header "Response" :value "" :open false :color (color :green600)})
+    :error (r/atom {:header "Error" :value "" :open false :color (color :red500)})
+    :send_message (r/atom {:to "" :msg ""})
+    :new-actor (r/atom {:type ""})
+    :snackbar (r/atom {:message "" :open false})
+    }))
 
 ;; Reagent components
 (defn pixi []
   [:div {:id "pixi-js"}])
 
 (defn slide-out-editor [event-channel state]
-  [ui/mui-theme-provider
+  [ui/mui-theme-provider {:mui-theme (get-mui-theme (aget js/MaterialUIStyles "DarkRawTheme"))}
    [ui/drawer {
                :open (@state :open)
                :open-secondary true
@@ -129,19 +136,18 @@
           (js/document.querySelector "#pixi-mount"))
 
 ;; Editor set-up
-(def editor (js/ace.edit "editor"))
-
-(-> editor
-    ((fn[e] (.setTheme e "ace/theme/monokai") e))
-    ((fn[e]
-       (.addCommand (.-commands e)
-                    (clj->js
-                     {:name    "save"
-                      :bindKey {:win "Ctrl-S" :mac "Cmd-S"}
-                      :exec    #(raise-event :update_actor_code (get-in @state [:editor :actor-type]))}))
-       e))
-    .getSession
-    (.setMode "ace/mode/elixir"))
+(def editor
+  (js/CodeMirror.
+   (.querySelector js/document "#editor")
+   (clj->js {
+             :mode "elixir"
+             :theme "monokai"
+             :viewportMargin "500"
+             :extraKeys {"Ctrl-S" #(put! core-chan [:update_actor_code ((deref (@state :editor)) :actor-type)])}
+             :lineNumbers true
+             :value ((deref (@state :editor)) :code)
+             })
+   ))
 
 ;; Graphics initialization -> graphics event channel
 (def graphics-event-chan
@@ -175,13 +181,12 @@
                       (channel/push "start_actor" {:type (:type new-actor)}
                                     (fn [running_actor]
                                       (put! graphics-event-chan [:new_running_actor [running_actor new-actor]]))))
-   :show-code       (fn [actor-type]
-                      (channel/push "get_actor_code" {:name actor-type}
-                                    (fn [resp]
-                                      (swap! (@state :editor) assoc :actor-type actor-type :open true)
-                                      (.setValue editor (get resp "code"))
-                                      ;; (.sideNav (js/jQuery ".button-collapse") "show")
-                                      )))
+   :show-code (fn [actor-type]
+                (channel/push "get_actor_code" {:name actor-type}
+                              (fn [resp]
+                                (swap! (@state :editor) assoc :actor-type actor-type :open true :code (get resp "code"))
+                                (.setValue editor (get resp "code"))
+                                )))
    :open-message-input (fn [actor-pid]
                          (swap! (:send_message @state) assoc :to actor-pid)
                          (swap! (:message-input-dialog @state) assoc :open true)
