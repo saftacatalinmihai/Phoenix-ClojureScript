@@ -40,6 +40,7 @@
                         :error (r/atom {:header "Error" :value "" :open false :color (color :red500)})
                         :send_message (r/atom {:to "" :msg ""})
                         :new-actor (r/atom {:type ""})
+                        :snackbar (r/atom {:message "" :open false})
                         }))
 
 ;; Reagent components
@@ -100,6 +101,15 @@
    ]
 )
 
+(defn snack-bar [state]
+[ui/mui-theme-provider
+ [ui/snackbar {:open (@state :open)
+               :message (@state :message)
+               :auto-hide-duration 4000
+               :content-style {:color (get @state :color (color :white500))}
+               :on-request-close #(swap! state assoc :open false)
+               }]])
+
 (defn reagent-mount []
   [:div
    [m/main-menu core-chan (:main-menu @state)]
@@ -109,6 +119,7 @@
    [slide-out-editor core-chan (@state :editor)]
    [bottom-resp (@state :response)]
    [bottom-resp (@state :error)]
+   [snack-bar (@state :snackbar)]
    ])
 
 (r/render [reagent-mount]
@@ -116,12 +127,6 @@
 
 (r/render [pixi]
           (js/document.querySelector "#pixi-mount"))
-
-;; JavaScript library functions ( set-up )
-(.sideNav (js/jQuery ".button-collapse")
-          (clj->js
-           {:menuWidth (/ (-> js/window js/jQuery .width) 2)
-            :edge      'right'}))
 
 ;; Editor set-up
 (def editor (js/ace.edit "editor"))
@@ -204,7 +209,8 @@
                         (channel/push "update_actor" {:name actor_type :actor_code (.getValue editor)}
                                       #(do
                                          (swap! (@state :error) assoc :open false)
-                                         (js/Materialize.toast "Code saved" 4000 "green"))
+                                         (swap! (@state :snackbar) assoc :open true :message "Code saved" :color (color :green500))
+                                         )
                                       #(do
                                          (swap! (@state :error) assoc :value (pr-str %) :open true))))
    :message-click (fn [{x :x y :y}]
@@ -212,7 +218,6 @@
                     ;; (component-click :message-menu x y)
                     )
    :canvas-click (fn [{x :x y :y}]
-                   ;; (if ((deref (@state :main-menu)) :open))
                    (close-extra-components)
                    (component-click :main-menu x y)
                    )
