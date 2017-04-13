@@ -11,9 +11,27 @@
    [viz.menues :as m]
    [cljs.core.async :refer [put! chan <!]]))
 
+;; Core event channel
+(def core-chan (chan))
+(defn raise-event [event-name event-data]
+  (put! core-chan [event-name event-data]))
+
 ;; REAGENT STATE
 (defonce state (r/atom {
-                        :message-input-dialog (r/atom {:id :message-input-dialog :title "Message" :open false} )
+                        :message-input-dialog (r/atom {:id :message-input-dialog 
+                                                       :title "Message" 
+                                                       :open false
+                                                       :action (fn [st value]
+                                                                 (put! core-chan [:send-actor-message value])
+                                                                 (swap! st assoc :open false))
+                                                       })
+                        :add-actor-input-dialog (r/atom {:id :message-input-dialog 
+                                                         :title "Add actor"
+                                                         :open false
+                                                         :action (fn [st value]
+                                                                   (put! core-chan [:new_actor_type value])
+                                                                   (swap! st assoc :open false))
+                                                         })
                         :some-menu-opened {:open false :x 0 :y 0}
                         :main-menu (r/atom {:x 0 :y 0 :open false})
                         :running-actor-menu (r/atom {:x 5 :y 5 :open false})
@@ -24,10 +42,7 @@
                         :new-actor {:type ""}
                         }))
 
-;; Core event channel
-(def core-chan (chan))
-(defn raise-event [event-name event-data]
-  (put! core-chan [event-name event-data]))
+
 
 ;; Reagent components
 (defn pixi []
@@ -59,10 +74,7 @@
   (if (= 13 (.-charCode e)) (f)))
 
 (defn input-dialog [event-channel state]
-  (let [value (atom "")
-        send-message (fn []
-                       (put! event-channel [:send-actor-message @value])
-                       (swap! state assoc :open false))]
+  (let [value (atom "")]
     [ui/mui-theme-provider
      {:mui-theme (get-mui-theme
                   {:palette {:text-color (color :green600)}})}
@@ -72,7 +84,7 @@
                              [ui/flat-button
                               {:label "Submit"
                                :primary true
-                               :on-touch-tap send-message}])]
+                               :on-touch-tap #((@state :action) state @value)}])]
                   :open (:open @state)
                   :on-request-close #(swap! state assoc :open false)
                   }
@@ -81,27 +93,10 @@
                        :hint-text ""
                        :default-value @value
                        :on-change #(reset! value %2)
-                       :on-key-press (fn [e] (on-enter e send-message))
+                       :on-key-press (fn [e] (on-enter e #((@state :action) state @value)))
                        }]]]]))
 
 (defn response-dialog [] 1)
-
-(defn bottom-input-modal [header label id state-key-list on-enter]
-  [:div {:id (str "modal-" id) :class "modal bottom-sheet"}
-   [:div {:class "modal-content"}
-    [:h4 header]
-    [:div {:class "input-field"}
-     [:input {
-              :id id
-              :type "text"
-              :value (get-in @state state-key-list "")
-              :on-change #(swap! state assoc-in state-key-list (-> % .-target .-value))
-              :on-key-press (fn [e]
-                              (if (= 13 (.-charCode e))
-                                (on-enter (get-in @state state-key-list ""))))
-              }]
-     [:label {:for id} label]]
-    ]])
 
 (defn bottom-modal-resp [{header :header value :value}]
   [:div {:id (str "modal-resp") :class "modal bottom-sheet"}
@@ -110,32 +105,33 @@
     [:textarea
      {:disabled true :value value}]]])
 
-(defn add-new-actor-modal []
-  (bottom-input-modal
-   "Add new actor type"
-   "Type"
-   "new-actor"
-   [:new-actor :type]
-   (fn [input] (raise-event :new_actor_type {:name input}))))
+;; (defn add-new-actor-modal []
+;;   (bottom-input-modal
+;;    "Add new actor type"
+;;    "Type"
+;;    "new-actor"
+;;    [:new-actor :type]
+;;    (fn [input] (raise-event :new_actor_type {:name input}))))
 
-(defn send-message-modal []
-  (bottom-input-modal
-   "Send Message"
-   "Message"
-   "send-message"
-   [:send_message :msg]
-   (fn [input] (raise-event :send-actor-message (get @state :send_message )))))
+;; (defn send-message-modal []
+;;   (bottom-input-modal
+;;    "Send Message"
+;;    "Message"
+;;    "send-message"
+;;    [:send_message :msg]
+;;    (fn [input] (raise-event :send-actor-message (get @state :send_message )))))
 
 (defn reagent-mount []
   [:div
    [m/main-menu core-chan (:main-menu @state)]
    [m/running-actor-menu core-chan (:running-actor-menu @state)]
    [input-dialog core-chan (:message-input-dialog @state)]
+   [input-dialog core-chan (:add-actor-input-dialog @state)]
    [slide-out-editor]
    [error-modal]
-   [send-message-modal]
+   ;; [send-message-modal]
    [bottom-modal-resp (get-in @state [:response] )]
-   [add-new-actor-modal]
+   ;; [add-new-actor-modal]
    ])
 
 (r/render [reagent-mount]
@@ -196,8 +192,8 @@
                          (swap! state assoc-in [:send_message :to] actor-pid)
                          (swap! (:message-input-dialog @state) assoc :open true)
                          )
-   :add-new-actor (fn [_]
-                    (.modal (js/jQuery "#modal-new-actor") "open"))
+   :open-new-actor-input (fn [_]
+                           (swap! (:add-actor-input-dialog @state) assoc :open true))
    :send-actor-message (fn [msg]
                          (js/console.log (pr-str msg))
                          (channel/push "send_msg" {:to (get-in @state [:send_message :to]) :msg msg}
@@ -207,13 +203,12 @@
                                        (fn [err]
                                          (swap! state assoc-in [:error] err)
                                          (.modal (js/jQuery "#error-modal") "open"))))
-   :new_actor_type (fn [msg]
-                     (channel/push "new_actor" msg
+   :new_actor_type (fn [actor_type]
+                     (channel/push "new_actor" {:name actor_type}
                                    (fn [resp]
                                      (swap! state assoc-in [:response :value] (pr-str resp))
-                                     (.modal (js/jQuery "#modal-new-actor") "close")
-                                     (put! core-chan [:show-code (:name msg)])
-                                     (put! graphics-event-chan [:new_actor_type (:name msg)])
+                                     (put! core-chan [:show-code (get resp "actor_type")])
+                                     (put! graphics-event-chan [:new_actor_type (get resp "actor_type")])
                                      )))
    :update_actor_code (fn [actor_type]
                         (channel/push "update_actor" {:name actor_type :actor_code (.getValue editor)}

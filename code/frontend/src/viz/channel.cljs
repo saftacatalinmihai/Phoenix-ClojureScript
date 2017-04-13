@@ -20,12 +20,12 @@
     (push msg_type msg_body on_ok
                   (fn[resp]
                     (let [resp_clj (js->clj resp)]
-                      (js/console.log "Received error", resp_clj)))))
+                      (js/console.log "Received error" (pr-str resp_clj))))))
   ([msg_type msg_body on_ok on_error]
     (push msg_type msg_body on_ok on_error
                   (fn[resp]
                     (let [resp_clj (js->clj resp)]
-                      (js/console.log "Received Timeout", resp_clj)))))
+                      (js/console.log "Received Timeout" (pr-str resp_clj))))))
   ([msg_type msg_body on_ok on_error on_timeout]
     (let [pushEvent (.push channel msg_type (clj->js msg_body))]
       (-> pushEvent

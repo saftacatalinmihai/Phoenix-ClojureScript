@@ -61,5 +61,8 @@
                        :left (get @state :x)})}
     [ui/menu {:auto-width false}
      [ui/menu-item {:primary-text "New message" :right-icon (ic/communication-message)}]
-     [ui/menu-item {:primary-text "New Actor Type" :right-icon (ic/social-person-outline)}]
+     [ui/menu-item {:primary-text "New Actor Type" :right-icon (ic/social-person-outline)
+                    :on-touch-tap #(do
+                                     (put! event-channel [:open-new-actor-input :ok])
+                                     (swap! state assoc :open false))}]
 ]]])
