@@ -10,13 +10,13 @@
 (defn no-menu-opened? [state] (not (get-in @state [:some-menu-opened :open])))
 (defn some-menu-opened? [state] (get-in @state [:some-menu-opened :open]))
 (defn open-component-menu [state component-menu x y]
-  (js/console.log (pr-str  "open component" component-menu))
-  (js/console.log (pr-str (get @state component-menu)))
+  ;; (js/console.log (pr-str  "open component" component-menu))
+  ;; (js/console.log (pr-str (get @state component-menu)))
   (swap! (get @state component-menu) #(-> % (assoc :x x :y y :open true)))
   (swap! state assoc-in [:some-menu-opened] {:open true :x x :y y})
 )
 (defn close-other-menues [state x y]
-  (js/console.log "close others")
+  ;; (js/console.log "close others")
   (swap! (:main-menu @state) assoc-in [:open] false)
   (swap! (:running-actor-menu @state) assoc-in [:open] false)
   (swap! state assoc-in [:some-menu-opened] {:open false :x x :y y})
@@ -50,19 +50,23 @@
 ]]])
 
 (defn main-menu [event-channel state]
-  [ui/mui-theme-provider
-   {:mui-theme (get-mui-theme
-                {:palette {:text-color (color :green600)}})}
-   [ui/paper {:style (clj->js
-                      {:position "absolute"
-                       :float "left"
-                       :display (if (= (@state :open) true) "inline-block" "none")
-                       :top (get @state :y)
-                       :left (get @state :x)})}
-    [ui/menu {:auto-width false}
-     [ui/menu-item {:primary-text "New message" :right-icon (ic/communication-message)}]
-     [ui/menu-item {:primary-text "New Actor Type" :right-icon (ic/social-person-outline)
-                    :on-touch-tap #(do
-                                     (put! event-channel [:open-new-actor-input :ok])
-                                     (swap! state assoc :open false))}]
-]]])
+  (let [close #(swap! state assoc :open false)]
+    [ui/mui-theme-provider
+     {:mui-theme (get-mui-theme
+                  {:palette {:text-color (color :green600)}})}
+     [ui/paper {:style (clj->js
+                        {:position "absolute"
+                         :float "left"
+                         :display (if (= (@state :open) true) "inline-block" "none")
+                         :top (get @state :y)
+                         :left (get @state :x)})}
+      [ui/menu {
+                :auto-width false
+                :on-esc-key-down close
+                }
+       [ui/menu-item {:primary-text "New message" :right-icon (ic/content-mail)}]
+       [ui/menu-item {:primary-text "New Actor Type" :right-icon (ic/social-person-outline)
+                      :on-touch-tap #(do
+                                       (put! event-channel [:open-new-actor-input :ok])
+                                       (close))}]
+       ]]]))

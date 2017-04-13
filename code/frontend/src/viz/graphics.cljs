@@ -98,11 +98,7 @@
 
     (-> running-actor-sprite
         (draggable)
-        (clickable #( do
-                      (js/console.log "123" (pr-str (deref (.-state running-actor-sprite))))
-                      (put! (:core-chan @state) [:running-actor-click (deref (.-state running-actor-sprite))])
-
-                          )))))
+        (clickable #(put! (:core-chan @state) [:running-actor-click (deref (.-state running-actor-sprite))])))))
 
 (defn actor-type[init-state]
   (let [actor-type-sprite (circle-sprite
@@ -168,7 +164,6 @@
       (.stage.addChild app background-sprite)
       (.on background-sprite "pointerdown"
            (fn [e]
-             (js/console.log (.-data.originalEvent.pageX e) , (.-data.originalEvent.pageY e))
              (put! core-chan [:canvas-click {:x  (.-data.originalEvent.pageX e) :y (.-data.originalEvent.pageY e)}])
              )))
 

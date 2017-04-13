@@ -35,24 +35,29 @@
                         :some-menu-opened {:open false :x 0 :y 0}
                         :main-menu (r/atom {:x 0 :y 0 :open false})
                         :running-actor-menu (r/atom {:x 5 :y 5 :open false})
-                        :editor {:actor-type ""}
+                        :editor (r/atom {:actor-type "" :open false})
                         :response {:header "" :value ""}
                         :error ""
                         :send_message {:to "" :msg ""}
                         :new-actor {:type ""}
                         }))
 
-
-
 ;; Reagent components
 (defn pixi []
   [:div {:id "pixi-js"}])
 
-(defn slide-out-editor []
-  [:div
-   [:ul {:id "slide-out" :class "side-nav"}
-    [:div {:id "editor"}]]
-   [:a {:href "#" :data-activates "slide-out" :class "button-collapse"}]])
+(defn slide-out-editor [event-channel state]
+  [ui/mui-theme-provider
+   [ui/drawer {
+               :open (@state :open)
+               :open-secondary true
+               :width (/ (-> js/window js/jQuery .width) 2)
+               :docked false
+               :on-request-change #(if (= % false) (swap! state assoc :open false))
+               }
+    [:div {:id "editor"}]
+    ]]
+  )
 
 (defn error-modal []
   [:div
@@ -75,9 +80,7 @@
 
 (defn input-dialog [event-channel state]
   (let [value (atom "")]
-    [ui/mui-theme-provider
-     {:mui-theme (get-mui-theme
-                  {:palette {:text-color (color :green600)}})}
+    [ui/mui-theme-provider {get-mui-theme {:palette {:text-color (color :green600)}}}
      [:div
       [ui/dialog {:title (:title @state)
                   :actions [(r/as-element
@@ -105,33 +108,15 @@
     [:textarea
      {:disabled true :value value}]]])
 
-;; (defn add-new-actor-modal []
-;;   (bottom-input-modal
-;;    "Add new actor type"
-;;    "Type"
-;;    "new-actor"
-;;    [:new-actor :type]
-;;    (fn [input] (raise-event :new_actor_type {:name input}))))
-
-;; (defn send-message-modal []
-;;   (bottom-input-modal
-;;    "Send Message"
-;;    "Message"
-;;    "send-message"
-;;    [:send_message :msg]
-;;    (fn [input] (raise-event :send-actor-message (get @state :send_message )))))
-
 (defn reagent-mount []
   [:div
    [m/main-menu core-chan (:main-menu @state)]
    [m/running-actor-menu core-chan (:running-actor-menu @state)]
    [input-dialog core-chan (:message-input-dialog @state)]
    [input-dialog core-chan (:add-actor-input-dialog @state)]
-   [slide-out-editor]
+   [slide-out-editor core-chan (@state :editor)]
    [error-modal]
-   ;; [send-message-modal]
    [bottom-modal-resp (get-in @state [:response] )]
-   ;; [add-new-actor-modal]
    ])
 
 (r/render [reagent-mount]
@@ -184,9 +169,9 @@
    :show-code       (fn [actor-type]
                       (channel/push "get_actor_code" {:name actor-type}
                                     (fn [resp]
-                                      (swap! state assoc-in [:editor :actor-type] actor-type)
+                                      (swap! (@state :editor) assoc :actor-type actor-type :open true)
                                       (.setValue editor (get resp "code"))
-                                      (.sideNav (js/jQuery ".button-collapse") "show")
+                                      ;; (.sideNav (js/jQuery ".button-collapse") "show")
                                       )))
    :open-message-input (fn [actor-pid]
                          (swap! state assoc-in [:send_message :to] actor-pid)
@@ -195,7 +180,6 @@
    :open-new-actor-input (fn [_]
                            (swap! (:add-actor-input-dialog @state) assoc :open true))
    :send-actor-message (fn [msg]
-                         (js/console.log (pr-str msg))
                          (channel/push "send_msg" {:to (get-in @state [:send_message :to]) :msg msg}
                                        (fn [resp]
                                          (swap! state assoc-in [:response] {:value (pr-str resp) :header "Response"})
