@@ -6,17 +6,33 @@
    [cljs.core.async :refer [put! chan <! >! timeout close!]]
    [viz.animation :as anim]))
 
+(def component-size 45)
+
 (defn rand-color[]
   (rand-int 0xFFFFFF))
 
 (defonce state
   (atom {
          :actor-types-number 0
-         :component (atom {:x 200 :y 200 :color (rand-color)})}))
+         ;; :component (atom {:x 200 :y 200 :color (rand-color)})
+         }))
+
+(defn on-top-of-component? [{x :x y :y} component-state]
+  (and
+   (< (Math.abs (- (component-state :x) x)) component-size)
+   (< (Math.abs (- (component-state :y) y)) component-size)
+   ))
+
+(defn running-actors-under [{x :x y :y}]
+  (filter (fn [[k v]]
+            (on-top-of-component? {:x x :y y} @v))
+          (@state :running-actors)))
+
 
 (defn onDragStart[e]
   (this-as this
            (do
+             ;; (js/console.log "d s" (pr-str this))
              (set! (.-data this) (.-data e))
              (set! (.-alpha this) 0.5)
              (set! (.-dragging this) true))))
@@ -24,20 +40,37 @@
 (defn onDragEnd[e]
   (this-as this
            (do
+             ;; (js/console.log "d e" (pr-str this))
              (set! (.-alpha this) 1)
              (set! (.-dragging this) false))))
 
 (defn onDragMove[e]
   (this-as this
-           (if (.-dragging this)
-             (let [newP (.getLocalPosition (.-data this) (.-parent this))]
-               (put! (.-eventChan this) [:update-xy {:x (.-x newP) :y (.-y newP)}])))))
+           (do
+             ;; (js/console.log "d m" (pr-str this))
+             (if (.-dragging this)
+               (let [newP (.getLocalPosition (.-data this) (.-parent this))]
+                 (put! (.-eventChan this) [:update-xy {:x (.-x newP) :y (.-y newP)}]))
+               )
+             )))
 
-(defn draggable[component]
-  (-> component
-      (.on "pointerdown" onDragStart)
-      (.on "pointerup" onDragEnd)
-      (.on "pointermove" onDragMove)))
+(defn draggable
+  ([component]
+   (-> component
+       (.on "pointerdown" onDragStart)
+       (.on "pointerup" onDragEnd)
+       (.on "pointermove" onDragMove)))
+  ([component on-release]
+   (-> component
+       (.on "pointerup" (fn [e]
+                          (this-as this
+                                   (do
+                                     (set! (.-alpha this) 1)
+                                     (set! (.-dragging this) false)
+                                     (let [newP (.getLocalPosition (.-data this) (.-parent this))]
+                                       (on-release {:x (.-x newP) :y (.-y newP)}))))))
+       (.on "pointerdown" onDragStart)
+       (.on "pointermove" onDragMove))))
 
 (defn clickable [component cb]
   (-> component
@@ -54,10 +87,10 @@
 (defn shape-sprite [shape-constructor {x :x y :y c :color}]
   (let [graphics (-> (js/PIXI.Graphics.)
                      (.beginFill c 0.6)
-                     (shape-constructor x y 50)
+                     (shape-constructor x y component-size)
                      (.endFill))]
     (set! (.-boundsPadding graphics) 0)
-    (let [sprite (js/PIXI.Sprite. (.generateTexture graphics))]
+    (let [sprite (js/PIXI.Sprite. (.generateCanvasTexture graphics))]
       (set! (.-interactive sprite) true)
       (set! (.-buttonMode sprite) true)
       (.anchor.set sprite 0.5)
@@ -71,7 +104,7 @@
                      (.beginFill 0x000000)
                      (.drawRect 0 0 w h)
                      (.endFill))
-        sprite (js/PIXI.Sprite. (.generateTexture graphics))]
+        sprite (js/PIXI.Sprite. (.generateCanvasTexture graphics))]
     (set! (.-interactive sprite) true)
     sprite))
 
@@ -121,20 +154,48 @@
                                       (put! (.-eventChan this) [:update-xy {:x (.-initialX this)  :y (.-initialY this)}])
                                       (set! (.-alpha this) 1)
                                       (set! (.-dragging this) false)))) )
+        (clickable #(put! (:core-chan @state) [:show-code (:type (deref (.-state actor-type-sprite)))]))
         (draggable)
-        (clickable #(put! (:core-chan @state) [:show-code (:type (deref (.-state actor-type-sprite)))])))
+        )
     actor-type-sprite))
 
 (defn message-component [init-state]
   (let [message-sprite (js/PIXI.Sprite.fromImage "imgs/message-icon-png-14.png")]
     (.scale.set message-sprite 0.1)
     (.anchor.set message-sprite 0.5)
+    (set! (.-graphicsChannel message-sprite) (:graphics-channel init-state))
     (set! (.-interactive message-sprite) true)
     (set! (.-buttonMode message-sprite) true)
     (set! (.-x message-sprite) (:x init-state))
     (set! (.-y message-sprite) (:y init-state))
-    (draggable message-sprite)
-    (clickable message-sprite #(put! (:core-chan @state) [:message-click {:x (.-x message-sprite ) :y (.-y message-sprite) }]))))
+    (set! (.-msg message-sprite) (:msg init-state))
+    (clickable message-sprite
+               #(put!
+                 (:core-chan @state)
+                 [:message-click
+                  {:msg (.-msg message-sprite)
+                   :x (.-x message-sprite)
+                   :y (.-y message-sprite)}]))
+    (draggable message-sprite
+               #(let [actors-under (running-actors-under %)]
+                  (js/console.log actors-under)
+                  (js/console.log (empty? actors-under))
+                  (if (not (empty? actors-under))
+                    (do
+                      (js/console.log (pr-str (key (first actors-under))))
+                      (js/console.log (pr-str (.-msg message-sprite)))
+                      (js/console.log (.-eventChan message-sprite))
+                      (put! (:core-chan @state) [:send-actor-message2 {:to (key (first actors-under)) :msg (.-msg message-sprite)}])
+                      (put!
+                       (init-state :graphics-channel)
+                       [:animation [message-sprite
+                                    {:anim-function (anim/move-decelerated 0.05)
+                                     :from %
+                                     :to {:x (.-initialX message-sprite) :y (.-initialY message-sprite)}}]]))
+                    )
+                  )
+               )
+    ))
 
 (defn component[sprite-constructor state-atom]
   (let [component     (sprite-constructor @state-atom)
@@ -167,9 +228,6 @@
              (put! core-chan [:canvas-click {:x  (.-data.originalEvent.pageX e) :y (.-data.originalEvent.pageY e)}])
              )))
 
-    (def m (component message-component (atom {:x 200 :y 100})))
-    (.stage.addChild app m)
-
     (.ticker.add app (fn [_]
                        (doseq [[c a] (:animations @state)]
                          (anim/next-frame c a state)
@@ -183,8 +241,20 @@
       (->> (component actor-type actor-type-state)
            (.stage.addChild app)))
 
+    (doseq [[msg msg_state] (:messages @state)]
+      (->> (component message-component msg_state)
+           (.stage.addChild app)))
+
     (let [event-channel (chan)]
-      (let [handlers {:new_running_actor (fn [[{pid "pid" name "name"} {x :x y :y c :color}]]
+      (let [handlers {:new_message (fn [{msg :msg x :x y :y}]
+                                     (let [msg-state (atom {:x x :y y :msg msg :graphics-channel event-channel})
+                                           m (component message-component msg-state)]
+                                       (swap! state assoc-in [:messages msg] msg-state)
+                                       (.stage.addChild app m)))
+                      :remove_message (fn [msg]
+                                        (swap! state update-in [:messages] dissoc msg)
+                                        )
+                      :new_running_actor (fn [[{pid "pid" name "name"} {x :x y :y c :color}]]
                                            (let [running-actor-state (atom {:pid pid :x x :y y :color c :type name})]
                                              (swap! state assoc-in [:running-actors pid] running-actor-state)
                                              (->> (component running-actor (get-in @state [:running-actors pid]))
@@ -216,8 +286,8 @@
             (let [[event-name event-data] (<! event-channel)]
               ((event-name handlers) event-data))))
 
-        (put! event-channel [:animation [m {
-                                            :anim-function (anim/move-decelerated 0.05)
-                                            :from {:x 500 :y 200}
-                                            :to {:x 400 :y 300}}]])
+        ;; (put! event-channel [:animation [m {
+        ;;                                     :anim-function (anim/move-decelerated 0.05)
+        ;;                                     :from {:x 500 :y 200}
+        ;;                                     :to {:x 400 :y 300}}]])
         event-channel))))

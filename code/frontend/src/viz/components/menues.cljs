@@ -25,8 +25,7 @@
 (defn menues-eq-xy [m1 m2]
   (and (= (:x m1) (:x m2))) (= (:y m1) (:y m2)))
 
-
-(defn running-actor-menu [event-channel state]
+(defn menu [event-channel state menu-items]
   [ui/mui-theme-provider
    {:mui-theme (get-mui-theme
                 {:palette {:text-color (color :green600)}})}
@@ -37,37 +36,40 @@
                        :top (get @state :y)
                        :left (get @state :x)})
               }
-    [ui/menu {:auto-width false}
-     [ui/menu-item {
-                    :primary-text "Send Message"
-                    :right-icon (ic/communication-message)
-                    :on-touch-tap #(do
-                                     (put! event-channel [:open-message-input (get @state :pid)])
-                                     (swap! state assoc :open false)
-                                     )
-                    }]
-     [ui/menu-item {:primary-text "View State" :right-icon (ic/hardware-memory)}]
-     [ui/menu-item {:primary-text "View Message Log" :right-icon (ic/action-list)}]
-]]])
+    menu-items
+    ]]
+  )
+
+(defn running-actor-menu [event-channel state]
+  (menu event-channel state
+        [ui/menu {:auto-width false}
+         [ui/menu-item {
+                        :primary-text "Send Message"
+                        :right-icon (ic/communication-message)
+                        :on-touch-tap #(do
+                                         (put! event-channel [:open-message-input (get @state :pid)])
+                                         (swap! state assoc :open false)
+                                         )
+                        }]
+         [ui/menu-item {:primary-text "View State" :right-icon (ic/hardware-memory)}]
+         [ui/menu-item {:primary-text "View Message Log" :right-icon (ic/action-list)}]]
+        )
+  )
 
 (defn main-menu [event-channel state]
-  (let [close #(swap! state assoc :open false)]
-    [ui/mui-theme-provider
-     {:mui-theme (get-mui-theme
-                  {:palette {:text-color (color :green600)}})}
-     [ui/paper {:style (clj->js
-                        {:position "absolute"
-                         :float "left"
-                         :display (if (= (@state :open) true) "inline-block" "none")
-                         :top (get @state :y)
-                         :left (get @state :x)})}
-      [ui/menu {
-                :auto-width false
-                :on-esc-key-down close
-                }
-       [ui/menu-item {:primary-text "New message" :right-icon (ic/content-mail)}]
-       [ui/menu-item {:primary-text "New Actor Type" :right-icon (ic/social-person-outline)
-                      :on-touch-tap #(do
-                                       (put! event-channel [:open-new-actor-input :ok])
-                                       (close))}]
-       ]]]))
+  (menu event-channel state
+        [ui/menu {
+                  :auto-width false
+                  :on-esc-key-down #(swap! state assoc :open false)
+                  }
+         [ui/menu-item {:primary-text "New message" :right-icon (ic/content-mail)
+                        :on-touch-tap #(do
+                                         (js/console.log "")
+                                         (put! event-channel [:make-new-message {:x (@state :x) :y (@state :y)}])
+                                         (swap! state assoc :open false)
+                                         )
+                        }]
+         [ui/menu-item {:primary-text "New Actor Type" :right-icon (ic/social-person-outline)
+                        :on-touch-tap #(do
+                                         (put! event-channel [:open-new-actor-input :ok])
+                                         (swap! state assoc :open false))}]]))

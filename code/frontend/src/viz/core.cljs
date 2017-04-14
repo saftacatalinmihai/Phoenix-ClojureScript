@@ -31,14 +31,28 @@
                                       (swap! st assoc :open false))
                             })
     :add-actor-input-dialog (r/atom
-                             {:id :message-input-dialog
+                             {:id :add-actor-input-dialog
                               :title "Add actor"
                               :open false
                               :action (fn [st value]
                                         (put! core-chan [:new_actor_type value])
                                         (swap! st assoc :open false))
                               })
+    :new-message-input-dialog (r/atom
+                               {
+                                :id :new-message-input-dialog
+                                :title "New Message"
+                                :open false
+                                :x 400
+                                :y 400
+                                :action (fn [st value]
+                                          (put! core-chan [:new-message {:msg value :x (@st :x) :y (@st :y)}])
+                                          (swap! st assoc :open false)
+                                          )
+                                }
+                               )
     :some-menu-opened (r/atom {:open false :x 0 :y 0})
+    :message-menu (r/atom {:x 0 :y 0 :msg "" :open false})
     :main-menu (r/atom {:x 0 :y 0 :open false})
     :running-actor-menu (r/atom {:x 5 :y 5 :open false})
     :editor (r/atom {:actor-type "" :open false :code ""})
@@ -67,11 +81,9 @@
     ]]
   )
 
-(defn on-enter [e f]
-  (if (= 13 (.-charCode e)) (f)))
-
 (defn input-dialog [event-channel state]
-  (let [value (atom "")]
+  (let [value (atom "")
+        on-enter #(if (= 13 (.-charCode %)) (%2))]
     [ui/mui-theme-provider {get-mui-theme {:palette {:text-color (color :green600)}}}
      [:div
       [ui/dialog {:title (:title @state)
@@ -79,7 +91,10 @@
                              [ui/flat-button
                               {:label "Submit"
                                :primary true
-                               :on-touch-tap #((@state :action) state @value)}])]
+                               :on-touch-tap #( do
+                                                (js/console.log @state)
+                                                ((@state :action) state @value)
+                                                )}])]
                   :open (:open @state)
                   :on-request-close #(swap! state assoc :open false)
                   }
@@ -119,10 +134,12 @@
 
 (defn reagent-mount []
   [:div
+   [pixi]
    [m/main-menu core-chan (:main-menu @state)]
    [m/running-actor-menu core-chan (:running-actor-menu @state)]
    [input-dialog core-chan (:message-input-dialog @state)]
    [input-dialog core-chan (:add-actor-input-dialog @state)]
+   [input-dialog core-chan (:new-message-input-dialog @state)]
    [slide-out-editor core-chan (@state :editor)]
    [bottom-resp (@state :response)]
    [bottom-resp (@state :error)]
@@ -130,10 +147,7 @@
    ])
 
 (r/render [reagent-mount]
-          (js/document.querySelector "#reagent-mount"))
-
-(r/render [pixi]
-          (js/document.querySelector "#pixi-mount"))
+          (js/document.querySelector "#mount"))
 
 ;; Editor set-up
 (def editor
@@ -193,6 +207,18 @@
                          )
    :open-new-actor-input (fn [_]
                            (swap! (:add-actor-input-dialog @state) assoc :open true))
+   :send-actor-message2 (fn [{to :to msg :msg}]
+                          (js/console.log (pr-str to msg))
+                          (channel/push "send_msg" {:to to :msg msg}
+                                       (fn [resp]
+                                         (js/console.log (pr-str resp))
+                                         (swap! (:response @state) assoc :open true :value (pr-str resp) :header "Response")
+                                         )
+                                       (fn [err]
+                                         (js/console.log (pr-str err))
+                                         (swap! (@state :error) assoc :value (pr-str err) :open true)
+                                         ))
+                          )
    :send-actor-message (fn [msg]
                          (channel/push "send_msg" {:to ((deref (@state :send_message)) :to) :msg msg}
                                        (fn [resp]
@@ -218,8 +244,9 @@
                                          )
                                       #(do
                                          (swap! (@state :error) assoc :value (pr-str %) :open true))))
-   :message-click (fn [{x :x y :y}]
-                    (js/console.log "1")
+   :message-click (fn [{x :x y :y msg :msg}]
+                    (swap! (@state :message-menu) assoc :msg msg)
+                    (js/console.log msg)
                     ;; (component-click :message-menu x y)
                     )
    :canvas-click (fn [{x :x y :y}]
@@ -232,6 +259,13 @@
    :open-input-dialog (fn [id] (swap! (id @state) assoc :open true))
    :close-input-dialog (fn [id]
                          (swap! (id @state) assoc :open false ))
+   :make-new-message (fn [{x :x y :y}]
+                       (js/console.log "xy" (pr-str x y))
+                       (swap! (@state :new-message-input-dialog) assoc :open true :x x :y y)
+                       )
+   :new-message (fn [{msg :msg x :x y :y}]
+                  (put! graphics-event-chan [:new_message {:x x :y y :msg msg}])
+                  )
    })
 
 ;; Backent channel set-up

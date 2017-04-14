@@ -11,14 +11,13 @@
                  [cljsjs/codemirror "5.24.0-1"]
                  [cljsjs/jquery "2.2.4-0"]
                  ]
-  :plugins [[lein-figwheel "0.5.8"]
-            [refactor-nrepl "2.2.0"]
+  :plugins [
+            [lein-figwheel "0.5.8"]
+            ;; [refactor-nrepl "2.2.0"]
             [lein-cljsbuild "1.1.5"]
-            [cider/cider-nrepl "0.13.0"]]
-  :source-paths ["src"]
-  ;; :main viz.core
+            ;; [cider/cider-nrepl "0.13.0"]
+            ]
   :clean-targets [:target-path "out"]
-  :optimizations :none
   :cljsbuild {
     :builds [{:id "dev"
               :source-paths ["src"]
@@ -27,12 +26,13 @@
                          :asset-path "js/out"
                          :output-to "resources/public/js/main.js"
                          :output-dir "resources/public/js/out"
-                         :optimizations :advanced
+                         :optimizations :none
                          :source-map-timestamp true}
              }]}
-  :figwheel {
-             :open-file-command "emacsclient"
-             :nrepl-port 7888
-             :nrepl-middleware ["cider.nrepl/cider-middleware"
-                                "refactor-nrepl.middleware/wrap-refactor"]
-             })
+  ;; :figwheel {
+  ;;            :open-file-command "emacsclient"
+  ;;            :nrepl-port 7888
+  ;;            :nrepl-middleware ["cider.nrepl/cider-middleware"
+  ;;                               "refactor-nrepl.middleware/wrap-refactor"]
+  ;;            }
+)
