@@ -28,7 +28,7 @@
                             :open false
                             :action (fn [st value]
                                       (put! core-chan [:send-actor-message value])
-                                      (swap! st assoc :open false))
+                                      (swap! st assoc :open faLse))
                             })
     :add-actor-input-dialog (r/atom
                              {:id :add-actor-input-dialog

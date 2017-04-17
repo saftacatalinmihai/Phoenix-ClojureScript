@@ -6,7 +6,7 @@
    [cljs.core.async :refer [put! chan <! >! timeout close!]]
    [viz.animation :as anim]))
 
-(def component-size 45)
+(def component-size 50)
 
 (defn rand-color[]
   (rand-int 0xFFFFFF))
@@ -291,3 +291,32 @@
         ;;                                     :from {:x 500 :y 200}
         ;;                                     :to {:x 400 :y 300}}]])
         event-channel))))
+
+(defn as-js-setter [keyword] (str ".-" (name keyword)))
+(defn set-pixi-attr
+  [sprite attr value]
+  (aset sprite (name attr) value)
+  )
+(defn new-sprite [sprite-constructor init-state]
+  (let [ch (chan)
+        state-atom (r/atom init-state)
+        sprite (sprite-constructor init-state)
+        handlers {:update-state (fn [new-state]
+                                  (swap! state-atom
+                                         (fn [old-state]
+                                           (reduce
+                                            (fn [st [k v]] (assoc st k v))
+                                            old-state
+                                            new-state))))}]
+    (go
+      (while true
+        (let [[ev-name ev-data] (<! ch)]
+          (ev-name handlers) ev-data)))
+    (add-watch state-atom :sprite-watch
+               (fn [key atom old-state new-state]
+                 (doseq [[k v] new-state]
+                   (set-pixi-attr sprite k v))))
+    {:channel ch
+     :state-atom state-atom}
+    )
+  )

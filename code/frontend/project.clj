@@ -17,6 +17,10 @@
             [lein-cljsbuild "1.1.5"]
             ;; [cider/cider-nrepl "0.13.0"]
             ]
+  :profiles {:dev {:dependencies [[figwheel-sidecar "0.5.8"]
+                                  [com.cemerick/piggieback "0.2.1"]]
+                   :source-paths ["cljs_src"]}}
+  :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
   :clean-targets [:target-path "out"]
   :cljsbuild {
     :builds [{:id "dev"
