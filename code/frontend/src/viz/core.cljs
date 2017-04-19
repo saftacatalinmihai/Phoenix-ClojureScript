@@ -9,7 +9,7 @@
    [cljsjs.jquery]
    [reagent.core :as r]
    [viz.channel :as channel]
-   [viz.graphics :as graphics]
+   [viz.graphics2 :as graphics]
    [viz.menues :as m]
    [cljs.core.async :refer [put! chan <!]]))
 
@@ -28,7 +28,7 @@
                             :open false
                             :action (fn [st value]
                                       (put! core-chan [:send-actor-message value])
-                                      (swap! st assoc :open faLse))
+                                      (swap! st assoc :open false))
                             })
     :add-actor-input-dialog (r/atom
                              {:id :add-actor-input-dialog
@@ -163,12 +163,40 @@
              })
    ))
 
+(defn graphics-init [{
+            init-fn        :init-fn
+            core-ch        :core-ch
+            mount-el       :mount-el
+            width          :width
+            height         :height
+            g-new-box-fn   :g-new-box-fn
+            g-new-sphere-fn   :g-new-sphere-fn
+            }]
+  (let [
+        graphics-ch (chan)
+        graphics (init-fn core-ch mount-el width height)
+        handlers {:new-box g-new-box-fn
+                  :new-sphere g-new-sphere-fn
+                  :set_actor_types #(println %2)}
+        ]
+    (go
+      (while true
+        (let [[ev-name ev-data] (<! graphics-ch)]
+          ((get handlers ev-name) graphics ev-data))))
+    graphics-ch
+    )
+  )
+
 ;; Graphics initialization -> graphics event channel
 (def graphics-event-chan
-  (graphics/init
-   core-chan
-   (js/document.querySelector "#pixi-js")
-   (- (-> js/window js/jQuery .width) 10) (- (-> js/window js/jQuery .height) 10)))
+  (graphics-init {:init-fn graphics/init
+                  :core-ch core-chan
+                  :mount-el (js/document.querySelector "#pixi-js")
+                  :width (- (-> js/window js/jQuery .width) 10)
+                  :height (- (-> js/window js/jQuery .height) 10)
+                  :g-new-box-fn graphics/new-box
+                  :g-new-sphere-fn graphics/new-sphere
+                  }))
 
 (defn component-click [component-menu x y]
   (if (m/no-menu-opened? state)

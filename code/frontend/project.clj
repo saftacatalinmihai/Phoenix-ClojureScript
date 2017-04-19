@@ -8,6 +8,7 @@
                  [cljsjs/phoenix "1.2.0-0"]
                  [cljsjs/jquery "2.2.4-0"]
                  [cljsjs/pixi "4.4.3-0"]
+                 [cljsjs/three "0.0.84-0"]
                  [cljsjs/codemirror "5.24.0-1"]
                  [cljsjs/jquery "2.2.4-0"]
                  ]
