@@ -1,5 +1,5 @@
 (ns viz.stateful-component
-  (:require-macros [cljs.core.async.macros :refer [go]])
+  (:require-macros [cljs.core.async.macros :refer [go go-loop]])
   (:require
     cljsjs.three
     [cljs.core.async :refer [put! chan <! >! timeout close!]])
@@ -7,8 +7,9 @@
 
 ;; Framework
 
-(require '[cljs.core.async :refer [put! chan <! >! timeout close!]])
+(require '[cljs.core.async :refer [put! chan <! <!! >! timeout close!]])
 (require '[clojure.core.async :refer [put! chan <! >! timeout close!]])
+(require-macros '[cljs.core.async.macros :refer [go go-loop]])
 
 (defn component
       [{
@@ -38,13 +39,23 @@
            (comp {:event-channel ch :props (into {} prop-fns)})))
 
 (defn create-store [reducer init-state]
-      (let [ch init-state])
-      )
+  (let [store (chan)]
+    (go-loop [state init-state listeners []]
+      (let [[type data] (<! store)]
+        (case type
+          :action (recur listeners (reducer state data))
+          :listener (recur (conj listeners data) state)
+          )))
+    store))
+
+(defn dispatch [store action] (put! store [:action action]))
+(defn listener [store listener] (put! store [:listener listener]))
 
 ;; Testing Todo
 
 ;; Actions
 (defonce next-todo-id (atom 0))
+
 (defn add-todo [text]
       {:type :add-todo
        :id   (swap! next-todo-id inc)
