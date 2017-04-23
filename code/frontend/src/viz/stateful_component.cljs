@@ -5,6 +5,8 @@
     [cljs.core.async :refer [put! chan <! >! timeout close!]])
   )
 
+;; Framework
+
 (require '[cljs.core.async :refer [put! chan <! >! timeout close!]])
 (require '[clojure.core.async :refer [put! chan <! >! timeout close!]])
 
@@ -35,20 +37,51 @@
                     props))]
            (comp {:event-channel ch :props (into {} prop-fns)})))
 
-
-(defn mock-comp [{ch     :event-channel
-                  {x :x} :props
-                  }]
-      (x #(println "old " %1 " new " %2))
-      )
-(defn mock-comp2 [{ch :event-channel
-                   {x :x y :y} :props}]
-      (x #(println "new-x" %2))
-      (y #(println "new-y" %2))
+(defn create-store [reducer init-state]
+      (let [ch init-state])
       )
 
-(def mock-state (atom {}))
-(component {:id 1 :component mock-comp :props {:x 1} :state mock-state :event-channel (chan)})
-(component {:id 2 :component mock-comp2 :props {:x 1 :y 2} :state mock-state :event-channel (chan)})
-(reset! (get-in @mock-state [1 :x]) 4)
-(reset! (get-in @mock-state [2 :y]) 4)
+;; Testing Todo
+
+;; Actions
+(defonce next-todo-id (atom 0))
+(defn add-todo [text]
+      {:type :add-todo
+       :id   (swap! next-todo-id inc)
+       :text text})
+(defn toggle-todo [id]
+      {:type :toggle-todo
+       :id   id})
+
+;;Components
+(defn todo [{text :text completed :completed on-click :on-click}]
+      (completed (fn [c]
+                     (text (fn [t]
+                               (println "Todo " t " Completed " c))))))
+
+(defn todo-list [{todos :todos on-todo-click :on-todo-click}]
+      (map #(todo (into {} % {:on-click on-todo-click})) todos))
+
+;; Reducers
+(defn todo-r
+      [state action]
+      (case (action :type)
+            :add-todo {:id        (action :id)
+                       :text      (action :text)
+                       :completed false
+                       }
+            :toggle-todo (if (not= (state :id) (action :id))
+                           state
+                           (assoc state :completed (not (state :completed)))
+                           )
+            state
+            )
+      )
+
+(defn todos-r
+      [state action]
+      (case (action :type)
+            :add-todo (conj state (todo-r nil action))
+            :toggle-todo (map todo-r state)
+            )
+      )
