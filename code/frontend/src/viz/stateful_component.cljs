@@ -7,7 +7,7 @@
 
 ;; Framework
 
-(require '[cljs.core.async :refer [put! chan <! <!! >! timeout close!]])
+(require '[cljs.core.async :refer [put! chan <! >! timeout close!]])
 (require '[clojure.core.async :refer [put! chan <! >! timeout close!]])
 (require-macros '[cljs.core.async.macros :refer [go go-loop]])
 
@@ -43,13 +43,46 @@
     (go-loop [state init-state listeners []]
       (let [[type data] (<! store)]
         (case type
-          :action (recur listeners (reducer state data))
+          :action (recur listeners
+                         (let [old-state state
+                               new-state (reducer state data)]
+                              (println old-state)
+                              (println new-state)
+                              (println listeners)
+                              (doseq [l listeners]
+                                     ((l :callback)
+                                       (get-in old-state (l :path))
+                                       (get-in old-state (l :path))
+                                       ))
+                              )
+                         )
           :listener (recur (conj listeners data) state)
           )))
     store))
 
 (defn dispatch [store action] (put! store [:action action]))
-(defn listener [store listener] (put! store [:listener listener]))
+(defn listener [store listener path] (put! store [:listener {:callback listener :path path}]))
+
+(defn state-to-listeners [store state path]
+      (cond
+        (map? state)
+          (into {} (map (fn [[k v]] {k (state-to-listeners store v (conj path k))}) state))
+        (vector? state)
+          (into [] (map-indexed (fn [idx v] (state-to-listeners store v (conj path idx)))) state)
+        :else
+          (fn [cb] (listener store cb path))))
+
+(def s {:a 1 :b {:c 2 :d [3 4]}})
+
+(def store (create-store (fn [store action] store) s))
+
+(def sl (state-to-listeners store s []))
+
+(dispatch store {:asd 1})
+
+((get-in sl [:a]) #(println "Listener" %))
+
+
 
 ;; Testing Todo
 
