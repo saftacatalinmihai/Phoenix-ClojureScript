@@ -38,14 +38,24 @@
                     props))]
            (comp {:event-channel ch :props (into {} prop-fns)})))
 
+(defn state-to-listeners [store state path]
+      (cond
+        (map? state)
+          (into {} (map (fn [[k v]] {k (state-to-listeners store v (conj path k))}) state))
+        (vector? state)
+          (into [] (map-indexed (fn [idx v] (state-to-listeners store v (conj path idx)))) state)
+        :else
+          (fn [cb] (listener store cb path))))
+
 (defn create-store [reducer init-state]
   (let [store (chan)]
-    (go-loop [state init-state listeners []]
+    (go-loop [listeners [] state init-state]
       (let [[type data] (<! store)]
         (case type
           :action (recur listeners
                          (let [old-state state
-                               new-state (reducer state data)]
+                               new-state (reducer state data)
+                               new-state-to-listeners (state-to-listeners store new-state [])]
                               (println old-state)
                               (println new-state)
                               (println listeners)
@@ -63,48 +73,8 @@
 (defn dispatch [store action] (put! store [:action action]))
 (defn listener [store listener path] (put! store [:listener {:callback listener :path path}]))
 
-(defn state-to-listeners [store state path]
-      (cond
-        (map? state)
-          (into {} (map (fn [[k v]] {k (state-to-listeners store v (conj path k))}) state))
-        (vector? state)
-          (into [] (map-indexed (fn [idx v] (state-to-listeners store v (conj path idx)))) state)
-        :else
-          (fn [cb] (listener store cb path))))
-
 (def s {:a 1 :b {:c 2 :d [3 4]}})
-
-(def store (create-store (fn [store action] store) s))
-
-(def sl (state-to-listeners store s []))
-
-(dispatch store {:asd 1})
-
-((get-in sl [:a]) #(println "Listener" %))
-
-
-
-;; Testing Todo
-
-;; Actions
-(defonce next-todo-id (atom 0))
-
-(defn add-todo [text]
-      {:type :add-todo
-       :id   (swap! next-todo-id inc)
-       :text text})
-(defn toggle-todo [id]
-      {:type :toggle-todo
-       :id   id})
-
-;;Components
-(defn todo [{text :text completed :completed on-click :on-click}]
-      (completed (fn [c]
-                     (text (fn [t]
-                               (println "Todo " t " Completed " c))))))
-
-(defn todo-list [{todos :todos on-todo-click :on-todo-click}]
-      (map #(todo (into {} % {:on-click on-todo-click})) todos))
+(def s [{:id 1 :todo-text "ASD" :done false} {:id 2 :todo-text "qwe" :done true}])
 
 ;; Reducers
 (defn todo-r
@@ -129,3 +99,36 @@
             :toggle-todo (map todo-r state)
             )
       )
+
+(def store (create-store todos-r s))
+
+(def sl (state-to-listeners store s []))
+
+((get-in sl [0]) #(println "Listener" %))
+
+(dispatch store {:type :toggle-todo :id 1})
+
+
+;; Testing Todo
+
+;; Actions
+(defonce next-todo-id (atom 0))
+
+(defn add-todo [text]
+      {:type :add-todo
+       :id   (swap! next-todo-id inc)
+       :text text})
+(defn toggle-todo [id]
+      {:type :toggle-todo
+       :id   id})
+
+;;Components
+(defn todo [{text :text completed :completed on-click :on-click}]
+      (completed (fn [c]
+                     (text (fn [t]
+                               (println "Todo " t " Completed " c))))))
+
+(defn todo-list [{todos :todos on-todo-click :on-todo-click}]
+      (map #(todo (into {} % {:on-click on-todo-click})) todos))
+
+
