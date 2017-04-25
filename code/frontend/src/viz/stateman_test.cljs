@@ -1,5 +1,5 @@
 (ns viz.stateman-test
-  (:require [viz.stateman :refer ]))
+  (:require [viz.stateman :refer :all]))
 
 ;; Test
 (def store (create-store (fn [s a] {:name (a :payload)}) {:name "Mihai"}))
@@ -14,7 +14,7 @@
         :inc (inc state)
         :dec (dec state)))
 
-(defn counter [store dispatch]
+(defn counter [store]
   (on-change store [] #(println "old: " %1 " new " %2))
   (dispatch {:type :inc}))
 
