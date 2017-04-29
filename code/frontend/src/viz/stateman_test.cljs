@@ -1,5 +1,4 @@
-(ns viz.stateman-test
-  (:require [viz.stateman :refer :all]))
+(ns viz.stateman2)
 
 ;; Test
 (def store (create-store (fn [s a] {:name (a :payload)}) {:name "Mihai"}))
@@ -55,8 +54,47 @@
        :id   id})
 
 (def todos [{:id 1 :text "ASD" :completed false} {:id 2 :text "qwe" :completed true}])
-(def store (create-store todos-r todos))
-(on-change store [] #(println "Changed" % %2))
-(dispatch store (add-todo "ASD"))
-(dispatch store (add-todo "ASD3"))
-(dispatch store (toggle-todo 1))
+(let [store (create-store todos-r todos)]
+     (on-change store [] #(println "Changed" % %2))
+
+     (bind
+       (fn [todos] (todos (fn [old new] (println "Old: " old "new: " new))))
+       (params store [[0]])
+       )
+
+     (dispatch store (add-todo "ASD"))
+     (dispatch store (add-todo "ASD3"))
+     (dispatch store (toggle-todo 1))
+     (dispatch store (toggle-todo 1))
+     (dispatch store (toggle-todo 2))
+     )
+
+(defn component-reducer [[key state] action]
+      (println key state action)
+      (case (action :type)
+            :move (if (= (action :component) key)
+                    {key (action :to)}
+                    {key state})
+            {key state}
+            ))
+(defn reducer [state action]
+      (into {} (map #(component-reducer % action) state)))
+
+(defn component [x y z]
+      (x #(println "Component moved x from " % " to " %2))
+      (y #(println "Component moved y from " % " to " %2))
+      (z #(println "Component moved z from " % " to " %2))
+      )
+(def init-state {:a {:x 1 :y 1 :z 1} :b {:x 2 :y 2 :z 2}})
+(def store (create-store reducer init-state))
+(def a (bind component (params store [[:a :x] [:a :y] [:a :z]])))
+
+(let [init-state {:a {:x 1 :y 1 :z 1} :b {:x 2 :y 2 :z 2}}
+      store (create-store reducer init-state)
+      a (bind component (params store [[:a :x] [:a :y] [:a :z]]))
+      b (bind component (params store [[:b :x] [:b :y] [:b :z]]))]
+     (dispatch store {:type :move :component :a :to {:x 11 :y 12 :z 13}})
+     (println "Store:" (store :get-state))
+     (dispatch store {:type :move :component :b :to {:x 21 :y 2 :z 2}})
+     (println "Store:" (store :get-state))
+     )

@@ -42,7 +42,6 @@
                mesh)))
 
 
-
 (def new-box (new-geometry :box))
 (def new-sphere (new-geometry :sphere))
 

@@ -79,8 +79,6 @@
 
         [:div {:id "editor"}]]])
 
-
-
 (defn input-dialog [event-channel state]
       (let [value (atom "")
             on-enter #(if (= 13 (.-charCode %)) (%2))]
@@ -105,7 +103,6 @@
                               :on-change     #(reset! value %2)
                               :on-key-press  (fn [e] (on-enter e #((@state :action) state @value)))}]]]]))
 
-
 (defn bottom-resp [state]
       [ui/mui-theme-provider {get-mui-theme {:palette {:text-color (color :green600)}}}
 
@@ -120,17 +117,13 @@
                         :value           (@state :value)
                         :underline-style {:border-color (@state :color)}}]]])
 
-
-
-
-(defn snack-bar [state])
-[ui/mui-theme-provider
- [ui/snackbar {:open               (@state :open)
-               :message            (@state :message)
-               :auto-hide-duration 4000
-               :content-style      {:color (get @state :color (color :white500))}
-               :on-request-close   #(swap! state assoc :open false)}]]
-
+(defn snack-bar [state]
+      [ui/mui-theme-provider
+       [ui/snackbar {:open               (@state :open)
+                     :message            (@state :message)
+                     :auto-hide-duration 4000
+                     :content-style      {:color (get @state :color (color :white500))}
+                     :on-request-close   #(swap! state assoc :open false)}]])
 
 (defn reagent-mount []
       [:div
@@ -144,7 +137,6 @@
        [bottom-resp (@state :response)]
        [bottom-resp (@state :error)]
        [snack-bar (@state :snackbar)]])
-
 
 (r/render [reagent-mount]
           (js/document.querySelector "#mount"))
