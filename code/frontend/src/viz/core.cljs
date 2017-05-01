@@ -194,42 +194,6 @@
   ;  (- (-> js/window js/jQuery .width) 10) (- (-> js/window js/jQuery .height) 10))
   )
 
-;; Example
-(put! graphics-event-chan [:new-box {:size     30 :x 0 :y 0 :z 0
-                                     :anim-fns [{:fn :spin-x :speed 0.01}
-                                                {:fn :spin-y :speed 0.01}
-                                                {:fn :spin-z :speed 0.01}]}])
-(put! graphics-event-chan [:new-box {:size     30 :x 0 :y 0 :z 0
-                                     :anim-fns [{:fn :spin-x :speed -0.01}
-                                                {:fn :spin-y :speed 0.01}
-                                                {:fn :spin-z :speed 0.01}]}])
-(put! graphics-event-chan [:new-box {:size     30 :x 0 :y 0 :z 0
-                                     :anim-fns [{:fn :spin-x :speed 0.01}
-                                                {:fn :spin-y :speed -0.01}
-                                                {:fn :spin-z :speed 0.01}]}])
-(put! graphics-event-chan [:new-box {:size     30 :x 0 :y 0 :z 0
-                                     :anim-fns [{:fn :spin-x :speed 0.01}
-                                                {:fn :spin-y :speed 0.01}
-                                                {:fn :spin-z :speed -0.01}]}])
-(put! graphics-event-chan [:new-box {:size     30 :x 0 :y 0 :z 0
-                                     :anim-fns [{:fn :spin-x :speed -0.01}
-                                                {:fn :spin-y :speed -0.01}
-                                                {:fn :spin-z :speed 0.01}]}])
-(put! graphics-event-chan [:new-box {:size     30 :x 0 :y 0 :z 0
-                                     :anim-fns [{:fn :spin-x :speed 0.01}
-                                                {:fn :spin-y :speed -0.01}
-                                                {:fn :spin-z :speed -0.01}]}])
-(put! graphics-event-chan [:new-box {:size     30 :x 0 :y 0 :z 0
-                                     :anim-fns [{:fn :spin-x :speed -0.01}
-                                                {:fn :spin-y :speed 0.01}
-                                                {:fn :spin-z :speed -0.01}]}])
-(put! graphics-event-chan [:new-box {:size     30 :x 0 :y 0 :z 0
-                                     :anim-fns [{:fn :spin-x :speed -0.01}
-                                                {:fn :spin-y :speed -0.01}
-                                                {:fn :spin-z :speed -0.01}]}])
-
-
-
 (defn component-click [component-menu x y]
       (if (m/no-menu-opened? state)
         (m/open-component-menu state component-menu x y)

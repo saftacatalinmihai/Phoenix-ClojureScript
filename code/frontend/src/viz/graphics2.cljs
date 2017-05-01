@@ -5,31 +5,23 @@
     [viz.stateman :as st]
     [cljs.core.async :refer [put! chan <! >! timeout close!]]))
 
-(defn component-reducer [[key state] action]
-      (case (action :type)
-            :move (if (= (action :component) key)
-                    {key (action :to)}
-                    {key state})
-            {key state}
-            ))
+(def init-state [{:geometry :box :size  30 :x 0 :y 0 :z 0 :anim-fns [{:fn :spin-x :speed 0.01} {:fn :spin-y :speed 0.01} {:fn :spin-z :speed 0.01}]}
+                 {:geometry :box :size  30 :x 0 :y 0 :z 0 :anim-fns [{:fn :spin-x :speed -0.01} {:fn :spin-y :speed 0.01} {:fn :spin-z :speed 0.01}]}
+                 {:geometry :box :size  30 :x 0 :y 0 :z 0 :anim-fns [{:fn :spin-x :speed 0.01} {:fn :spin-y :speed -0.01} {:fn :spin-z :speed 0.01}]}
+                 {:geometry :box :size  30 :x 0 :y 0 :z 0 :anim-fns [{:fn :spin-x :speed 0.01} {:fn :spin-y :speed 0.01} {:fn :spin-z :speed -0.01}]}
+                 {:geometry :box :size  30 :x 0 :y 0 :z 0 :anim-fns [{:fn :spin-x :speed -0.01} {:fn :spin-y :speed -0.01} {:fn :spin-z :speed 0.01}]}
+                 {:geometry :box :size  30 :x 0 :y 0 :z 0 :anim-fns [{:fn :spin-x :speed -0.01} {:fn :spin-y :speed 0.01} {:fn :spin-z :speed -0.01}]}
+                 {:geometry :box :size  30 :x 0 :y 0 :z 0 :anim-fns [{:fn :spin-x :speed 0.01} {:fn :spin-y :speed -0.01} {:fn :spin-z :speed -0.01}]}
+                 {:geometry :box :size  30 :x 0 :y 0 :z 0 :anim-fns [{:fn :spin-x :speed -0.01} {:fn :spin-y :speed -0.01} {:fn :spin-z :speed -0.01}]}
+                 ])
+
 (defn reducer [state action]
-      (into {} (map #(component-reducer % action) state)))
-
-(defn component [x y z]
-      (x #(js/console.log "Component moved x from " % " to " %2))
-      (y #(js/console.log "Component moved y from " % " to " %2))
-      (z #(js/console.log "Component moved z from " % " to " %2))
-      )
-
-(let [init-state {:a {:x 1 :y 1 :z 1} :b {:x 2 :y 2 :z 2}}
-      store (st/create-store reducer init-state)
-      a (st/bind component (st/params store [[:a :x] [:a :y] [:a :z]]))
-      b (st/bind component (st/params store [[:b :x] [:b :y] [:b :z]]))]
-     (st/dispatch store {:type :move :component :a :to {:x 11 :y 12 :z 13}})
-     ;(st/get-state store (fn [state] (js/console.log "State1" (pr-str state))))
-     (st/dispatch store {:type :move :component :b :to {:x 21 :y 2 :z 2}})
-     ;(st/get-state store (fn [state] (js/console.log "State2" (pr-str state))))
-     )
+      (case (action :type)
+            :move-x (update-in state [0 :x] #(+ % (action :increment)))
+            :move-y (update-in state [0 :y] #(+ % (action :increment)))
+            :move-z (update-in state [0 :z] #(+ % (action :increment)))
+            state))
+(defonce store (st/create-store reducer init-state))
 
 (def animations
   {
@@ -48,28 +40,40 @@
             camera     :camera
             renderer   :renderer
             render-fns :render-fns
-            }
-           {size     :size
-            x        :x
-            y        :y
-            z        :z
-            anim-fns :anim-fns}]
+            }]
+          (fn [size x y z anim-fns]
+              (size (fn [old new-size]
+                        (let [box ((geometries geometry) new-size new-size new-size)
+                              mat (js/THREE.MeshPhongMaterial. (js-obj "color" 0xa0a0ff))
+                              mesh (js/THREE.Mesh. box mat)]
 
-          (let [box ((geometries geometry) size size size)
-                mat (js/THREE.MeshPhongMaterial. (js-obj "color" 0xa0a0ff))
-                mesh (js/THREE.Mesh. box mat)]
-
-               (aset mesh "position" "x" x)
-               (aset mesh "position" "y" y)
-               (aset mesh "position" "z" z)
-               (.add scene mesh)
-
-               (swap! render-fns concat (map #(fn [] ((((% :fn) animations) mesh) (% :speed))) anim-fns))
-               mesh)))
-
+                             (x #(aset mesh "position" "x" %2))
+                             (y #(aset mesh "position" "y" %2))
+                             (z #(aset mesh "position" "z" %2))
+                             (.add scene mesh)
+                             (anim-fns (fn [o new-anims]
+                                           (swap! render-fns concat (map #(fn [] ((((% :fn) animations) mesh) (% :speed))) new-anims)))
+                                       )))))))
 
 (def new-box (new-geometry :box))
 (def new-sphere (new-geometry :sphere))
+
+(defn init-box [graphics path store]
+      (st/bind (fn [size x y z anim-fns] ((new-box graphics) size x y z anim-fns))
+               (st/params store [[path :size] [path :x] [path :y] [path :z] [path :anim-fns]])))
+
+(defn init-sphere [graphics path store]
+      (st/bind (fn [size x y z anim-fns] ((new-sphere graphics) size x y z anim-fns))
+               (st/params store [[path :size] [path :x] [path :y] [path :z] [path :anim-fns]])))
+
+(defn init-from-store [graphics store]
+      (st/get-state store
+                    (fn [state]
+                        (doall (map-indexed (fn [idx c]
+                                                (case (c :geometry)
+                                                      :box (init-box graphics idx store)
+                                                      :sphere (init-sphere graphics idx store)))
+                                            state)))))
 
 (defn init [core-chan mount_elem width height]
       ;;First initiate the basic elements of a THREE scene
@@ -78,7 +82,7 @@
                        50 (/ width height) 1 10000)
             renderer (js/THREE.WebGLRenderer.)
             light (js/THREE.PointLight. 0xf0f0f0 0.5)
-            ;controls (js/THREE.OrbitControls. p-camera)
+            controls (js/THREE.OrbitControls. p-camera)
             ]
 
            (.setClearColor renderer 0x505050)
@@ -95,15 +99,17 @@
 
            ;Kick off the animation loop updating
            (let [render-fns (atom [
-                                   ;#(.update controls)
-                                   ])]
+                                   #(.update controls)
+                                   ])
+                 graphics {:scene      scene
+                           :camera     p-camera
+                           :renderer   renderer
+                           :render-fns render-fns}]
                 (defn animate []
                       (.requestAnimationFrame js/window animate)
                       (doseq [r @render-fns] (r))
                       (.render renderer scene p-camera))
 
                 (animate)
-                {:scene      scene
-                 :camera     p-camera
-                 :renderer   renderer
-                 :render-fns render-fns})))
+                (init-from-store graphics store)
+                graphics)))

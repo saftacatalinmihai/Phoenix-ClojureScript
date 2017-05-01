@@ -14,7 +14,9 @@
                                                (add-watch state-atom (swap! watcher-id inc)
                                                           (fn [key atom old new]
                                                               (if (not= (get-in old path) (get-in new path))
-                                                                (cb (get-in old path) (get-in new path))))))
+                                                                (cb (get-in old path) (get-in new path)))))
+                                               (cb nil (get-in @state-atom path))
+                                               )
                                :dispatch (let [action ev-data]
                                               (swap! state-atom (fn [crt-state]
                                                                     (js/console.log "crt-state:" (pr-str crt-state))
