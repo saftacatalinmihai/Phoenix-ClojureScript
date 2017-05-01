@@ -194,6 +194,8 @@
   ;  (- (-> js/window js/jQuery .width) 10) (- (-> js/window js/jQuery .height) 10))
   )
 
+;(graphics/dispatch {:type :move-x :increment -10})
+
 (defn component-click [component-menu x y]
       (if (m/no-menu-opened? state)
         (m/open-component-menu state component-menu x y)
