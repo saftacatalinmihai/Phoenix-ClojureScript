@@ -40,7 +40,7 @@
 
 (defn params [store paths]
       (map
-        (fn [path] (fn [cb] (on-change store path cb)))
+        #(fn [cb] (on-change store % cb))
         paths))
 (defn bind [fun params]
       (apply fun params))
