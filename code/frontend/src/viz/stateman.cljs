@@ -35,8 +35,7 @@
            (go
              (put! store [:get-state ch])
              (cb (<! ch))
-             (close! ch)))
-  )
+             (close! ch))))
 
 (defn params [store paths]
       (map

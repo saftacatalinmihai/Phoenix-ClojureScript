@@ -1,5 +1,5 @@
 (defproject viz "0.1.0-SNAPSHOT"
-  :dependencies [[org.clojure/clojure "1.8.0"]
+  :dependencies [[org.clojure/clojure "1.9.0-alpha16"]
                  [org.clojure/clojurescript "1.9.229"]
                  [org.clojure/core.async "0.3.442"]
                  [reagent "0.6.1" :exclusions [org.clojure/tools.reader cljsjs/react cljsjs/react-dom]]

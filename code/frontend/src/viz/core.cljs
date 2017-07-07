@@ -195,6 +195,7 @@
   )
 
 ;(graphics/dispatch {:type :move-x :increment -10})
+;(graphics/dispatch {:type :new-sphere :id 1 :size  30 :x 0 :y 0 :z 0 })
 
 (defn component-click [component-menu x y]
       (if (m/no-menu-opened? state)
@@ -290,7 +291,8 @@
                              (swap! (@state :new-message-input-dialog) assoc :open true :x x :y y))
 
    :new-message          (fn [{msg :msg x :x y :y}]
-                             (put! graphics-event-chan [:new_message {:x x :y y :msg msg}]))})
+                             (put! graphics-event-chan [:new_message {:x x :y y :msg msg}]))
+   })
 
 
 
