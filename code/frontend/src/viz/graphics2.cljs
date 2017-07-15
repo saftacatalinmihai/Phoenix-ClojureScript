@@ -92,9 +92,9 @@
            (.setPixelRatio renderer (.-devicePixelRatio js/window))
            ;;Change the starting position of cube and camera
            (aset p-camera "name" "p-camera")
-           (aset p-camera "position" "x" 15)
-           (aset p-camera "position" "y" 16)
-           (aset p-camera "position" "z" 13)
+           (aset p-camera "position" "x" 25)
+           (aset p-camera "position" "y" 26)
+           (aset p-camera "position" "z" 23)
            (.lookAt p-camera (.-position scene))
            (.setSize renderer width height)
 

@@ -11,7 +11,13 @@
     [viz.channel :as channel]
     [viz.graphics2 :as graphics]
     [viz.menues :as m]
-    [cljs.core.async :refer [put! chan <!]]))
+    [viz.actor-system.events :as e]
+    [viz.actor-system.specs :as t]
+    [cljs.core.async :refer [put! chan <! ]]))
+
+(js/console.log "[START]")
+(e/-test)
+(t/-test)
 
 ;; Core event channel
 (def core-chan (chan))
@@ -195,7 +201,7 @@
   )
 
 ;(graphics/dispatch {:type :move-x :increment -10})
-;(graphics/dispatch {:type :new-sphere :id 1 :size  30 :x 0 :y 0 :z 0 })
+(graphics/dispatch {:type :new-sphere :id 1 :size  30 :x 0 :y 0 :z 0 })
 
 (defn component-click [component-menu x y]
       (if (m/no-menu-opened? state)
