@@ -10,4 +10,4 @@
 (s/def ::actor (s/keys :req-un [::pid ::type]))
 
 (defn -test []
-  (assert (s/valid? ::actor {:pid "<asd>", :type "Actor2"})))
+  (assert (s/valid? ::actor {:pid "<asd>" :type "Actor2"})))
