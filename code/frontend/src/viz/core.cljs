@@ -13,11 +13,13 @@
     [viz.menues :as m]
     [viz.actor-system.events :as e]
     [viz.actor-system.specs :as t]
+    [viz.actor-system.state :as st]
     [cljs.core.async :refer [put! chan <! ]]))
 
 (js/console.log "[START]")
 (e/-test)
 (t/-test)
+(st/-test)
 
 ;; Core event channel
 (def core-chan (chan))
