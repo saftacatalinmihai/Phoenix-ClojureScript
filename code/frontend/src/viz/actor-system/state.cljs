@@ -1,6 +1,7 @@
 (ns viz.actor-system.state
   (:require [viz.actor-system.events :as ev]
-            [viz.actor-system.specs :as actor-system]))
+            [viz.actor-system.specs :as actor-system]
+            [viz.view.state3d :as view]))
 
 ;; The State keeper implementation of EventHandler
 (defmulti handle-event :event/type)
@@ -11,11 +12,15 @@
 (defmethod handle-event :event/message-sent [ev state] state)
 (defmethod handle-event :event/message-received [ev state] state)
 
-(deftype State [state-atom]
+(deftype State [state-atom next_handler]
   ev/EventHandler
-  (handle [this ev] (swap! state-atom #(handle-event ev %))))
+  (handle [this ev]
+    (swap! state-atom #(handle-event ev %))
+    (ev/handle next_handler ev)
+    ))
 
-(defonce sticky-state (State. (atom {})))
+(def state-atom (atom {}))
+(defonce sticky-state (State. state-atom (view/state state-atom)))
 
 (defn -test []
   (let [e {:event/type :event/actor-spawned ::actor-system/actor {:pid "<1.2.1>" :type "SomeActorType"}}

@@ -18,10 +18,10 @@
     [cljs.core.async :refer [put! chan <! ]]))
 
 (js/console.log "[START]")
-(e/-test)
-(t/-test)
+;(e/-test)
+;(t/-test)
 (st/-test)
-(st3d/-test)
+;(st3d/-test)
 
 ;; Core event channel
 (def core-chan (chan))
