@@ -14,12 +14,14 @@
     [viz.actor-system.events :as e]
     [viz.actor-system.specs :as t]
     [viz.actor-system.state :as st]
+    [viz.view.state3d :as st3d]
     [cljs.core.async :refer [put! chan <! ]]))
 
 (js/console.log "[START]")
 (e/-test)
 (t/-test)
 (st/-test)
+(st3d/-test)
 
 ;; Core event channel
 (def core-chan (chan))

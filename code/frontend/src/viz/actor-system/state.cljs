@@ -6,7 +6,7 @@
 (defmulti handle-event :event/type)
 
 (defmethod handle-event :event/actor-spawned [ev state]
-  (assoc-in state [:running-actors (get-in ev [::actor-system/process :pid])] (::actor-system/process ev)))
+  (assoc-in state [:running-actors (get-in ev [::actor-system/actor :pid])] (::actor-system/actor ev)))
 
 (defmethod handle-event :event/message-sent [ev state] state)
 (defmethod handle-event :event/message-received [ev state] state)
@@ -18,8 +18,8 @@
 (defonce sticky-state (State. (atom {})))
 
 (defn -test []
-  (let [e {:event/type :event/actor-spawned ::actor-system/process {:pid "<1.2.1>" :type "SomeActorType"}}
-        e2 {:event/type :event/actor-spawned ::actor-system/process {:pid "<1.2.2>" :type "SomeActorType2"}}
+  (let [e {:event/type :event/actor-spawned ::actor-system/actor {:pid "<1.2.1>" :type "SomeActorType"}}
+        e2 {:event/type :event/actor-spawned ::actor-system/actor {:pid "<1.2.2>" :type "SomeActorType2"}}
         ]
     (js/console.log (pr-str "State: " (ev/handle sticky-state e)))
     (js/console.log (pr-str "State: " (ev/handle sticky-state e2)))
