@@ -19,8 +19,8 @@
                                                )
                                :dispatch (let [action ev-data]
                                               (swap! state-atom (fn [crt-state]
-                                                                    (js/console.log "crt-state:" (pr-str crt-state))
-                                                                    (js/console.log "action: " (pr-str action))
+                                                                    ;(js/console.log "crt-state:" (pr-str crt-state))
+                                                                    ;(js/console.log "action: " (pr-str action))
                                                                     (reducer crt-state action))))
                                :get-state (put! ev-data @state-atom)
                                ))

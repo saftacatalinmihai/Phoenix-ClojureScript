@@ -17,9 +17,9 @@
             :move-z (update-in state [0 :z] #(+ % (action :increment)))
             state))
 
-(js/console.log "Store0: " (pr-str init-state))
+;(js/console.log "Store0: " (pr-str init-state))
 (defonce store (st/create-store reducer init-state))
-(st/get-state store #(js/console.log "Store1: " (pr-str %1)))
+;(st/get-state store #(js/console.log "Store1: " (pr-str %1)))
 
 (def animations
   {
@@ -67,10 +67,11 @@
 (defn init-from-store [graphics store]
       (st/get-state store
                     (fn [state]
-                      (js/console.log (pr-str "State:" state))
+                      ;(js/console.log (pr-str "State:" state))
                         (doall (map (fn [[id c]]
-                                      (do (js/console.log (pr-str id))
-                                        (js/console.log (pr-str c))
+                                      (do
+                                        ;(js/console.log (pr-str id))
+                                        ;(js/console.log (pr-str c))
                                           (case (c :geometry)
                                             :box (init-box graphics id store)
                                             :sphere (init-sphere graphics id store)
