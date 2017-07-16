@@ -18,8 +18,8 @@
 (defonce sticky-state (State. (atom {})))
 
 (defn -test []
-  (let [e {:event/type :event/actor-spawned ::actor-system/process {:pid "<1.2.4>" :type "SomeActorType"}}
-        e2 {:event/type :event/actor-spawned ::actor-system/process {:pid "<1.2.3>" :type "SomeActorType2"}}
+  (let [e {:event/type :event/actor-spawned ::actor-system/process {:pid "<1.2.1>" :type "SomeActorType"}}
+        e2 {:event/type :event/actor-spawned ::actor-system/process {:pid "<1.2.2>" :type "SomeActorType2"}}
         ]
     (js/console.log (pr-str "State: " (ev/handle sticky-state e)))
     (js/console.log (pr-str "State: " (ev/handle sticky-state e2)))
